@@ -1,14 +1,27 @@
-# Variables de entorno
-.env
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Dependencias
-vendor/
+# dependencies
+/node_modules
 
-# Logs
-storage/logs/*
-!storage/logs/.gitkeep
+# next.js
+/.next/
+/out/
 
-# Archivos del sistema
-.DS_Store
-Thumbs.db
+# production
+/build
 
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
