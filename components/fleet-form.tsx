@@ -20,6 +20,14 @@ type ExistingTruck = {
   foto_url?: string | null
 }
 
+// 👇 Estado de edición tipado para inputs (strings)
+type EditPatch = {
+  marca?: string
+  modelo?: string
+  anio?: string
+  carroceria?: Carroceria
+}
+
 type TruckRow = {
   patente: string
   carroceria: Carroceria
@@ -41,6 +49,14 @@ function normalizePatente(x: string) {
   return String(x || "").replace(/\s+/g, "").toUpperCase()
 }
 
+function parseYearOrNull(s: string): number | null {
+  const t = String(s ?? "").trim()
+  if (!t) return null
+  const n = Number(t)
+  if (!Number.isInteger(n) || n < 1900 || n > 2100) return null
+  return n
+}
+
 export function FleetForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -51,8 +67,8 @@ export function FleetForm() {
   const [existing, setExisting] = useState<ExistingTruck[]>([])
   const [loadingExisting, setLoadingExisting] = useState(false)
 
-  // estado editable para existentes
-  const [editById, setEditById] = useState<Record<number, Partial<ExistingTruck>>>({})
+  // ✅ aquí está el cambio: EditPatch
+  const [editById, setEditById] = useState<Record<number, EditPatch>>({})
 
   // fotos seleccionadas para existentes (key=truckId)
   const [photoExisting, setPhotoExisting] = useState<Record<number, PhotoState | undefined>>({})
@@ -215,10 +231,7 @@ export function FleetForm() {
 
     for (const r of rows) {
       if (!normalizePatente(r.patente)) return "Hay una patente vacía."
-      if (r.anio) {
-        const n = Number(r.anio)
-        if (!Number.isInteger(n) || n < 1900 || n > 2100) return `Año inválido en patente ${r.patente}`
-      }
+      if (r.anio && parseYearOrNull(r.anio) === null) return `Año inválido en patente ${r.patente}`
     }
 
     if (duplicatesInForm.size > 0) return `Patentes duplicadas: ${Array.from(duplicatesInForm).join(", ")}`
@@ -259,7 +272,6 @@ export function FleetForm() {
       const insertedTrucks: Array<{ id: number; patente: string }> = data?.insertedTrucks ?? []
       const duplicates: string[] = data?.duplicates ?? []
 
-      // guardar fotos placeholder SOLO para los insertados que tengan foto seleccionada
       for (const it of insertedTrucks) {
         const key = normalizePatente(it.patente)
         const photo = photoNewByPatente[key]
@@ -283,7 +295,6 @@ export function FleetForm() {
           : `Insertados: ${insertedTrucks.length}.`,
       })
 
-      // limpiar
       rows.forEach((r) => {
         const key = normalizePatente(r.patente)
         const prev = photoNewByPatente[key]
@@ -307,15 +318,18 @@ export function FleetForm() {
   // --- guardar edición de existente ---
   const saveExistingRow = async (t: ExistingTruck) => {
     const patch = editById[t.id] ?? {}
-    const carroceria = (patch.carroceria ?? t.carroceria) as Carroceria | null
 
-    const anioRaw = (patch.anio ?? t.anio) as any
-    const anio = anioRaw === null || anioRaw === "" ? null : Number(anioRaw)
+    const marca = patch.marca !== undefined ? patch.marca : (t.marca ?? "")
+    const modelo = patch.modelo !== undefined ? patch.modelo : (t.modelo ?? "")
+    const carroceria = patch.carroceria !== undefined ? patch.carroceria : (t.carroceria ?? "CAMION_CON_CARRO")
 
-    if (anio !== null && (!Number.isInteger(anio) || anio < 1900 || anio > 2100)) {
-      toast({ title: "Error", description: "Año inválido.", variant: "destructive" })
+    // ✅ convertimos string -> number | null aquí
+    const anioStr = patch.anio !== undefined ? patch.anio : (t.anio !== null ? String(t.anio) : "")
+    if (anioStr.trim() !== "" && parseYearOrNull(anioStr) === null) {
+      toast({ title: "Error", description: "Año inválido (1900–2100).", variant: "destructive" })
       return
     }
+    const anio = parseYearOrNull(anioStr)
 
     try {
       const res = await fetch("/api/fleet", {
@@ -323,10 +337,10 @@ export function FleetForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           truckId: t.id,
-          marca: (patch.marca ?? t.marca) ?? null,
-          modelo: (patch.modelo ?? t.modelo) ?? null,
+          marca: marca.trim() || null,
+          modelo: modelo.trim() || null,
           anio,
-          carroceria: carroceria ?? null,
+          carroceria,
         }),
       })
       const data = await res.json()
@@ -384,7 +398,7 @@ export function FleetForm() {
 
   return (
     <>
-      {/* Botones navegación (opción B) */}
+      {/* Botones navegación */}
       <div className="flex gap-3 mb-6">
         <Button variant="outline" type="button" onClick={() => router.back()}>
           ← Volver
@@ -397,13 +411,11 @@ export function FleetForm() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle>Registro de Flota</CardTitle>
-          <CardDescription>
-            Puedes ver, editar y agregar camiones. También seleccionar foto por camión (placeholder).
-          </CardDescription>
+          <CardDescription>Editar camiones, agregar nuevos y registrar foto (placeholder).</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-8">
-          {/* ===== Camiones existentes (editable + foto) ===== */}
+          {/* Existentes */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold">Camiones registrados</h3>
@@ -432,10 +444,10 @@ export function FleetForm() {
                   <tbody>
                     {existing.map((t) => {
                       const patch = editById[t.id] ?? {}
-                      const effectiveMarca = (patch.marca ?? t.marca) ?? ""
-                      const effectiveModelo = (patch.modelo ?? t.modelo) ?? ""
-                      const effectiveAnio = (patch.anio ?? (t.anio ?? "")) as any
-                      const effectiveCarroceria = (patch.carroceria ?? t.carroceria ?? "CAMION_CON_CARRO") as Carroceria
+                      const effectiveMarca = patch.marca ?? (t.marca ?? "")
+                      const effectiveModelo = patch.modelo ?? (t.modelo ?? "")
+                      const effectiveAnio = patch.anio ?? (t.anio !== null ? String(t.anio) : "")
+                      const effectiveCarroceria = (patch.carroceria ?? (t.carroceria ?? "CAMION_CON_CARRO")) as Carroceria
 
                       const photo = photoExisting[t.id]
 
@@ -445,7 +457,7 @@ export function FleetForm() {
 
                           <td className="p-2 min-w-[160px]">
                             <Input
-                              value={String(effectiveMarca)}
+                              value={effectiveMarca}
                               onChange={(e) =>
                                 setEditById((p) => ({
                                   ...p,
@@ -457,7 +469,7 @@ export function FleetForm() {
 
                           <td className="p-2 min-w-[160px]">
                             <Input
-                              value={String(effectiveModelo)}
+                              value={effectiveModelo}
                               onChange={(e) =>
                                 setEditById((p) => ({
                                   ...p,
@@ -469,7 +481,7 @@ export function FleetForm() {
 
                           <td className="p-2 min-w-[110px]">
                             <Input
-                              value={String(effectiveAnio ?? "")}
+                              value={effectiveAnio}
                               inputMode="numeric"
                               placeholder="2020"
                               onChange={(e) =>
@@ -510,12 +522,7 @@ export function FleetForm() {
 
                             {photo ? (
                               <div className="relative w-full h-32 rounded-md overflow-hidden border">
-                                <Image
-                                  src={photo.previewUrl}
-                                  alt={`Foto ${t.patente}`}
-                                  fill
-                                  className="object-contain bg-white"
-                                />
+                                <Image src={photo.previewUrl} alt={`Foto ${t.patente}`} fill className="object-contain bg-white" />
                               </div>
                             ) : null}
 
@@ -548,7 +555,7 @@ export function FleetForm() {
             )}
           </div>
 
-          {/* ===== Agregar nuevos camiones + foto en la misma fila ===== */}
+          {/* Nuevos */}
           <div className="space-y-4">
             <h3 className="font-semibold">Agregar camiones</h3>
 
@@ -638,12 +645,7 @@ export function FleetForm() {
                           </td>
 
                           <td className="p-2 min-w-[110px]">
-                            <Input
-                              value={r.anio}
-                              inputMode="numeric"
-                              placeholder="2020"
-                              onChange={(e) => updateRow(i, { anio: e.target.value })}
-                            />
+                            <Input value={r.anio} inputMode="numeric" placeholder="2020" onChange={(e) => updateRow(i, { anio: e.target.value })} />
                           </td>
 
                           <td className="p-2 min-w-[240px] space-y-2">
@@ -653,17 +655,10 @@ export function FleetForm() {
 
                             {photo ? (
                               <div className="relative w-full h-32 rounded-md overflow-hidden border">
-                                <Image
-                                  src={photo.previewUrl}
-                                  alt={`Foto ${key}`}
-                                  fill
-                                  className="object-contain bg-white"
-                                />
+                                <Image src={photo.previewUrl} alt={`Foto ${key}`} fill className="object-contain bg-white" />
                               </div>
                             ) : (
-                              <p className="text-xs text-muted-foreground">
-                                Opcional: puedes agregar foto ahora o después.
-                              </p>
+                              <p className="text-xs text-muted-foreground">Opcional: puedes agregar foto ahora o después.</p>
                             )}
 
                             <input
@@ -693,11 +688,6 @@ export function FleetForm() {
             <Button className="w-full" onClick={handleSaveNew} disabled={saving || rows.length === 0}>
               {saving ? "Guardando..." : "Guardar nuevos camiones"}
             </Button>
-
-            <p className="text-xs text-muted-foreground">
-              Nota: por ahora la “foto” se registra como marcador (pending-upload://...). Cuando definan storage, se
-              reemplaza por URL real sin cambiar la UI.
-            </p>
           </div>
         </CardContent>
       </Card>
