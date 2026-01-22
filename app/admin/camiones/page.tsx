@@ -156,12 +156,14 @@ export default function AdminCamionesPage() {
 
   async function cancelar(row: Row) {
     const idInspeccion = row.inspeccionProgramada?.id;
-    if (!idInspeccion) return;
+    const inspeccionId = Number(idInspeccion);
+
+    if (!Number.isInteger(inspeccionId) || inspeccionId <= 0) return;
 
     const ok = confirm(`¿Cancelar inspección programada para ${row.patente}?`);
     if (!ok) return;
 
-    const res = await fetch(`/api/admin/inspecciones/${idInspeccion}`, {
+    const res = await fetch(`/api/admin/inspecciones/${inspeccionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "CANCELAR" }),
@@ -188,27 +190,36 @@ export default function AdminCamionesPage() {
         return;
       }
 
-      const fechaIso = new Date(fechaLocal).toISOString();
+      // ✅ NO convertir a ISO / UTC. Guardamos el datetime-local tal cual.
+      const fechaProgramada = fechaLocal;
 
-      const inspeccionId = selected.inspeccionProgramada?.id;
+      const rawId = selected.inspeccionProgramada?.id;
+      const inspeccionIdNum = Number(rawId);
 
-      const url = inspeccionId
-        ? `/api/admin/inspecciones/${inspeccionId}`
-        : "/api/admin/inspecciones";
+      // ✅ Logs útiles
+      console.log("[REAGENDAR] selected.id (camionId):", selected.id);
+      console.log("[REAGENDAR] inspeccionProgramada:", selected.inspeccionProgramada);
+      console.log("[REAGENDAR] rawId:", rawId, "typeof:", typeof rawId);
+      console.log("[REAGENDAR] inspeccionIdNum:", inspeccionIdNum);
 
-      const method = inspeccionId ? "PATCH" : "POST";
+      const shouldPatch = Number.isInteger(inspeccionIdNum) && inspeccionIdNum > 0;
 
-      const payload = inspeccionId
+      const url = shouldPatch ? `/api/admin/inspecciones/${inspeccionIdNum}` : "/api/admin/inspecciones";
+      const method = shouldPatch ? "PATCH" : "POST";
+
+      const payload = shouldPatch
         ? {
             action: "REAGENDAR",
-            fechaProgramada: fechaIso,
+            fechaProgramada,
             observaciones: obs.trim() ? obs.trim() : null,
           }
         : {
             camionId: selected.id,
-            fechaProgramada: fechaIso,
+            fechaProgramada,
             observaciones: obs.trim() ? obs.trim() : null,
           };
+
+      console.log("[REAGENDAR] method:", method, "url:", url, "payload:", payload);
 
       const res = await fetch(url, {
         method,
@@ -343,20 +354,16 @@ export default function AdminCamionesPage() {
                     <small style={{ color: "#666" }}>{r.empresa?.rut ?? ""}</small>
                   </td>
 
-                  {/* ✅ Estado + fecha programada bajo el estado */}
                   <td style={{ padding: 12 }}>
                     <div style={{ fontWeight: 800 }}>{r.ui_estado}</div>
 
                     {r.ui_estado === "PROGRAMADA" && r.inspeccionProgramada?.fechaProgramada && (
-                      <small style={{ color: "#666" }}>
-                        {formatDateLocal(r.inspeccionProgramada.fechaProgramada)}
-                      </small>
+                      <small style={{ color: "#666" }}>{formatDateLocal(r.inspeccionProgramada.fechaProgramada)}</small>
                     )}
                   </td>
 
                   <td style={{ padding: 12 }}>{formatDateLocal(r.createdAt)}</td>
 
-                  {/* ✅ Acciones */}
                   <td style={{ padding: 12 }}>
                     {r.ui_estado === "SIN_AGENDA" ? (
                       <button
@@ -414,7 +421,6 @@ export default function AdminCamionesPage() {
         </table>
       </div>
 
-      {/* Modal (Agendar/Reagendar) */}
       {open && selected && (
         <div
           role="dialog"
@@ -468,9 +474,7 @@ export default function AdminCamionesPage() {
 
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               <div>
-                <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>
-                  Fecha y hora
-                </label>
+                <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>Fecha y hora</label>
                 <input
                   type="datetime-local"
                   value={fechaLocal}
