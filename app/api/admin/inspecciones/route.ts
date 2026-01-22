@@ -12,42 +12,74 @@ function getPool() {
       server: process.env.AZURE_SQL_SERVER!,
       database: process.env.AZURE_SQL_DATABASE!,
       options: { encrypt: true, trustServerCertificate: false },
+      connectionTimeout: 30000,
+      requestTimeout: 30000,
+      pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
     }).connect();
   }
   return poolPromise;
 }
 
+// ✅ "YYYY-MM-DDTHH:mm"
 function isValidDatetimeLocal(s: unknown) {
-  return typeof s === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s);
+  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s);
 }
 
 export async function POST(req: NextRequest) {
   try {
-    if (!requireAdmin(req)) {
+    const session = requireAdmin(req);
+    if (!session) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => null);
-    if (!body) {
+    if (!body || typeof body !== "object") {
       return NextResponse.json({ ok: false, error: "Body inválido" }, { status: 400 });
     }
 
-    const camionId = body.camionId;
-    const fechaLocal = body.fechaProgramada;
-    const obs = typeof body.observaciones === "string" ? body.observaciones.trim() : null;
+    const camionId = (body as any).camionId;
+    const fechaLocal = (body as any).fechaProgramada;
+    const observaciones = typeof (body as any).observaciones === "string" ? (body as any).observaciones.trim() : null;
 
     if (!Number.isInteger(camionId) || camionId <= 0) {
       return NextResponse.json({ ok: false, error: "camionId inválido" }, { status: 400 });
     }
-
     if (!isValidDatetimeLocal(fechaLocal)) {
       return NextResponse.json({ ok: false, error: "fechaProgramada inválida" }, { status: 400 });
     }
 
     const fechaSql = `${fechaLocal.replace("T", " ")}:00`;
+
     const pool = await getPool();
 
+    // Verificar camión
+    const cam = await pool.request()
+      .input("camionId", sql.Int, camionId)
+      .query(`SELECT TOP 1 id FROM dbo.camiones WHERE id = @camionId`);
+
+    if (cam.recordset.length === 0) {
+      return NextResponse.json({ ok: false, error: "Camión no existe" }, { status: 404 });
+    }
+
+    // Evitar doble agenda futura (usar SYSDATETIME para coherencia con datetime2 local)
+    const exists = await pool.request()
+      .input("camionId", sql.Int, camionId)
+      .query(`
+        SELECT TOP 1 id
+        FROM dbo.inspecciones
+        WHERE camion_id = @camionId
+          AND estado = 'PROGRAMADA'
+          AND fecha_programada >= SYSDATETIME()
+      `);
+
+    if (exists.recordset.length > 0) {
+      return NextResponse.json(
+        { ok: false, error: "Este camión ya tiene una inspección programada" },
+        { status: 409 }
+      );
+    }
+
+    // Validar futura en SQL
     await pool.request()
       .input("fecha", sql.NVarChar(19), fechaSql)
       .query(`
@@ -58,7 +90,7 @@ export async function POST(req: NextRequest) {
     const ins = await pool.request()
       .input("camionId", sql.Int, camionId)
       .input("fecha", sql.NVarChar(19), fechaSql)
-      .input("obs", sql.NVarChar(sql.MAX), obs)
+      .input("obs", sql.NVarChar(sql.MAX), observaciones)
       .query(`
         INSERT INTO dbo.inspecciones
           (camion_id, inspector_id, fecha_inspeccion, fecha_programada, estado, resultado_general, observaciones_generales)
@@ -70,11 +102,13 @@ export async function POST(req: NextRequest) {
            'PROGRAMADA', 'observado', @obs)
       `);
 
-    return NextResponse.json({ ok: true, inspeccionId: ins.recordset[0].id });
-  } catch (err: any) {
     return NextResponse.json(
-      { ok: false, error: err.message || "Error interno" },
-      { status: 500 }
+      { ok: true, inspeccionId: ins.recordset?.[0]?.id ?? null },
+      { status: 201 }
     );
+  } catch (err) {
+    console.error("POST /api/admin/inspecciones error:", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
+
