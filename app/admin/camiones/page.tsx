@@ -17,8 +17,6 @@ type Row = {
     id: number;
     nombre: string | null;
     rut: string | null;
-    email?: string | null;
-    telefono?: string | null;
   };
 
   ui_estado: "SIN_AGENDA" | "PROGRAMADA" | "VENCIDA" | string;
@@ -42,6 +40,13 @@ function formatDateLocal(iso?: string | null) {
   });
 }
 
+function toDatetimeLocalValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
+}
+
 export default function AdminCamionesPage() {
   const router = useRouter();
 
@@ -50,6 +55,19 @@ export default function AdminCamionesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+
+  // Modal state
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [fechaLocal, setFechaLocal] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0); // mañana 10:00
+    return toDatetimeLocalValue(d);
+  });
+  const [obs, setObs] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toUpperCase();
@@ -93,6 +111,69 @@ export default function AdminCamionesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  function openAgendarModal(row: Row) {
+    setSelected(row);
+    setModalError(null);
+    setObs("");
+    // default fecha: mañana 10:00 cada vez que abras
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0);
+    setFechaLocal(toDatetimeLocalValue(d));
+
+    setOpen(true);
+  }
+
+  function closeModal() {
+    if (saving) return;
+    setOpen(false);
+    setSelected(null);
+    setModalError(null);
+  }
+
+  async function saveAgenda() {
+    if (!selected) return;
+    setSaving(true);
+    setModalError(null);
+
+    try {
+      if (!fechaLocal) {
+        setModalError("Selecciona fecha y hora");
+        return;
+      }
+
+      // datetime-local -> ISO
+      const fechaIso = new Date(fechaLocal).toISOString();
+
+      const res = await fetch("/api/admin/inspecciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          camionId: selected.id,
+          fechaProgramada: fechaIso,
+          observaciones: obs.trim() ? obs.trim() : null,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        setModalError(data?.error ?? "No se pudo agendar");
+        return;
+      }
+
+      closeModal();
+
+      // Recarga lista:
+      // si estás en SIN_AGENDA, el camión debe desaparecer y pasar a PROGRAMADA
+      await load();
+    } catch (e: any) {
+      setModalError(e?.message ?? "Error de red");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
@@ -128,50 +209,23 @@ export default function AdminCamionesPage() {
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-        <button
-          onClick={() => setTab("SIN_AGENDA")}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            fontWeight: 800,
-            background: tab === "SIN_AGENDA" ? "#111" : "#fff",
-            color: tab === "SIN_AGENDA" ? "#fff" : "#111",
-            cursor: "pointer",
-          }}
-        >
-          Sin agenda
-        </button>
-
-        <button
-          onClick={() => setTab("PROGRAMADA")}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            fontWeight: 800,
-            background: tab === "PROGRAMADA" ? "#111" : "#fff",
-            color: tab === "PROGRAMADA" ? "#fff" : "#111",
-            cursor: "pointer",
-          }}
-        >
-          Programadas
-        </button>
-
-        <button
-          onClick={() => setTab("VENCIDA")}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            fontWeight: 800,
-            background: tab === "VENCIDA" ? "#111" : "#fff",
-            color: tab === "VENCIDA" ? "#fff" : "#111",
-            cursor: "pointer",
-          }}
-        >
-          Vencidas
-        </button>
+        {(["SIN_AGENDA", "PROGRAMADA", "VENCIDA"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #ddd",
+              fontWeight: 800,
+              background: tab === t ? "#111" : "#fff",
+              color: tab === t ? "#fff" : "#111",
+              cursor: "pointer",
+            }}
+          >
+            {t === "SIN_AGENDA" ? "Sin agenda" : t === "PROGRAMADA" ? "Programadas" : "Vencidas"}
+          </button>
+        ))}
 
         <button
           onClick={() => router.push("/")}
@@ -189,9 +243,7 @@ export default function AdminCamionesPage() {
         </button>
       </div>
 
-      {error && (
-        <div style={{ color: "crimson", fontWeight: 800, marginBottom: 12 }}>{error}</div>
-      )}
+      {error && <div style={{ color: "crimson", fontWeight: 800, marginBottom: 12 }}>{error}</div>}
 
       <div style={{ border: "1px solid #eee", borderRadius: 14, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -204,50 +256,192 @@ export default function AdminCamionesPage() {
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Empresa</th>
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Estado</th>
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Creado</th>
+              <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Acción</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: 16, color: "#666" }}>
+                <td colSpan={8} style={{ padding: 16, color: "#666" }}>
                   {loading ? "Cargando..." : "Sin resultados"}
                 </td>
               </tr>
             ) : (
-              filteredRows.map((r) => {
-                const empNombre = r.empresa?.nombre ?? "—";
-                const empRut = r.empresa?.rut ?? "";
+              filteredRows.map((r) => (
+                <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                  <td style={{ padding: 12, fontWeight: 900 }}>{r.patente}</td>
 
-                return (
-                  <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                    <td style={{ padding: 12, fontWeight: 900 }}>{r.patente}</td>
+                  <td style={{ padding: 12 }}>
+                    <div style={{ fontWeight: 800 }}>{r.marca ?? "—"}</div>
+                    <small style={{ color: "#666" }}>{r.modelo ?? ""}</small>
+                  </td>
 
-                    <td style={{ padding: 12 }}>
-                      <div style={{ fontWeight: 800 }}>{r.marca ?? "—"}</div>
-                      <small style={{ color: "#666" }}>{r.modelo ?? ""}</small>
-                    </td>
+                  <td style={{ padding: 12 }}>{r.anio ?? "—"}</td>
+                  <td style={{ padding: 12 }}>{r.carroceria ?? "—"}</td>
 
-                    <td style={{ padding: 12 }}>{r.anio ?? "—"}</td>
+                  <td style={{ padding: 12 }}>
+                    <div style={{ fontWeight: 800 }}>{r.empresa?.nombre ?? "—"}</div>
+                    <small style={{ color: "#666" }}>{r.empresa?.rut ?? ""}</small>
+                  </td>
 
-                    <td style={{ padding: 12 }}>{r.carroceria ?? "—"}</td>
+                  <td style={{ padding: 12, fontWeight: 800 }}>{r.ui_estado}</td>
+                  <td style={{ padding: 12 }}>{formatDateLocal(r.createdAt)}</td>
 
-                    <td style={{ padding: 12 }}>
-                      <div style={{ fontWeight: 800 }}>{empNombre}</div>
-                      <small style={{ color: "#666" }}>{empRut}</small>
-                    </td>
-
-                    <td style={{ padding: 12, fontWeight: 800 }}>{r.ui_estado ?? "SIN_AGENDA"}</td>
-
-                    <td style={{ padding: 12 }}>{formatDateLocal(r.createdAt)}</td>
-                  </tr>
-                );
-              })
+                  <td style={{ padding: 12 }}>
+                    {r.ui_estado === "SIN_AGENDA" ? (
+                      <button
+                        onClick={() => openAgendarModal(r)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "1px solid #111",
+                          background: "#111",
+                          color: "#fff",
+                          fontWeight: 900,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Agendar
+                      </button>
+                    ) : (
+                      <span style={{ color: "#666" }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Modal Agendar */}
+      {open && selected && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 50,
+          }}
+          onClick={closeModal}
+        >
+          <div
+            style={{
+              width: "min(560px, 100%)",
+              background: "#fff",
+              borderRadius: 16,
+              border: "1px solid #eee",
+              padding: 18,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>Agendar inspección</div>
+                <div style={{ color: "#666", marginTop: 4 }}>
+                  <b>{selected.patente}</b> · {selected.empresa?.nombre ?? "—"}
+                </div>
+              </div>
+
+              <button
+                onClick={closeModal}
+                style={{
+                  marginLeft: "auto",
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  borderRadius: 10,
+                  padding: "8px 10px",
+                  fontWeight: 900,
+                  cursor: saving ? "not-allowed" : "pointer",
+                }}
+                disabled={saving}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>
+                  Fecha y hora
+                </label>
+                <input
+                  type="datetime-local"
+                  value={fechaLocal}
+                  onChange={(e) => setFechaLocal(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #ddd",
+                  }}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>
+                  Observaciones (opcional)
+                </label>
+                <textarea
+                  value={obs}
+                  onChange={(e) => setObs(e.target.value)}
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #ddd",
+                  }}
+                  disabled={saving}
+                />
+              </div>
+
+              {modalError && <div style={{ color: "crimson", fontWeight: 800 }}>{modalError}</div>}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  onClick={closeModal}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                    fontWeight: 900,
+                    cursor: saving ? "not-allowed" : "pointer",
+                  }}
+                  disabled={saving}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  onClick={saveAgenda}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #111",
+                    background: "#111",
+                    color: "#fff",
+                    fontWeight: 900,
+                    cursor: saving ? "not-allowed" : "pointer",
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? "Agendando..." : "Confirmar agenda"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

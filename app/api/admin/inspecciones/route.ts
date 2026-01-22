@@ -14,17 +14,15 @@ function getPool() {
       options: { encrypt: true, trustServerCertificate: false },
       connectionTimeout: 30000,
       requestTimeout: 30000,
+      pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
     }).connect();
   }
   return poolPromise;
 }
 
-function normalizePatente(p: string) {
-  return p.trim().toUpperCase().replace(/\s+/g, "");
-}
-
-function isValidIsoDate(value: string) {
-  const d = new Date(value);
+function isValidIsoDate(s: unknown) {
+  if (typeof s !== "string") return false;
+  const d = new Date(s);
   return !Number.isNaN(d.getTime());
 }
 
@@ -40,167 +38,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Body inválido" }, { status: 400 });
     }
 
-    const camionIdRaw = body.camionId;
-    const patenteRaw = body.patente;
-    const fechaProgramadaRaw = body.fechaProgramada;
-    const inspectorIdRaw = body.inspectorId;
-    const observacionesRaw = body.observaciones;
+    const camionId = body.camionId;
+    const fechaIso = body.fechaProgramada;
+    const observaciones =
+      typeof body.observaciones === "string" ? body.observaciones.trim() : null;
 
-    const hasCamionId = camionIdRaw !== undefined && camionIdRaw !== null && camionIdRaw !== "";
-    const hasPatente = typeof patenteRaw === "string" && patenteRaw.trim().length > 0;
-
-    if (!hasCamionId && !hasPatente) {
-      return NextResponse.json({ ok: false, error: "Debes enviar camionId o patente" }, { status: 400 });
+    if (!Number.isInteger(camionId) || camionId <= 0) {
+      return NextResponse.json({ ok: false, error: "camionId inválido" }, { status: 400 });
+    }
+    if (!isValidIsoDate(fechaIso)) {
+      return NextResponse.json({ ok: false, error: "fechaProgramada inválida" }, { status: 400 });
     }
 
-    if (typeof fechaProgramadaRaw !== "string" || !isValidIsoDate(fechaProgramadaRaw)) {
-      return NextResponse.json(
-        { ok: false, error: "fechaProgramada debe ser una fecha ISO válida" },
-        { status: 400 }
-      );
-    }
-
-    const fechaProgramada = new Date(fechaProgramadaRaw);
-
-    let observaciones: string | null = null;
-    if (observacionesRaw !== undefined && observacionesRaw !== null) {
-      if (typeof observacionesRaw !== "string") {
-        return NextResponse.json({ ok: false, error: "observaciones debe ser string" }, { status: 400 });
-      }
-      const txt = observacionesRaw.trim();
-      if (txt.length > 500) {
-        return NextResponse.json({ ok: false, error: "observaciones máximo 500 caracteres" }, { status: 400 });
-      }
-      observaciones = txt.length ? txt : null;
-    }
-
-    let inspectorId: number | null = null;
-    if (inspectorIdRaw !== undefined && inspectorIdRaw !== null && inspectorIdRaw !== "") {
-      const n = Number(inspectorIdRaw);
-      if (!Number.isInteger(n) || n <= 0) {
-        return NextResponse.json({ ok: false, error: "inspectorId inválido" }, { status: 400 });
-      }
-      inspectorId = n;
+    const fecha = new Date(fechaIso);
+    if (fecha.getTime() < Date.now() - 60_000) {
+      return NextResponse.json({ ok: false, error: "La fecha debe ser futura" }, { status: 400 });
     }
 
     const pool = await getPool();
-    const tx = new sql.Transaction(pool);
 
-    await tx.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+    // Verificar camión
+    const cam = await pool.request()
+      .input("camionId", sql.Int, camionId)
+      .query(`SELECT TOP 1 id FROM dbo.camiones WHERE id = @camionId`);
 
-    try {
-      let camionId: number;
-
-      if (hasCamionId) {
-        const n = Number(camionIdRaw);
-        if (!Number.isInteger(n) || n <= 0) {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "camionId inválido" }, { status: 400 });
-        }
-        camionId = n;
-      } else {
-        const patente = normalizePatente(String(patenteRaw));
-        const r = await new sql.Request(tx)
-          .input("patente", sql.VarChar(20), patente)
-          .query(`SELECT TOP 1 id FROM dbo.camiones WHERE patente = @patente`);
-
-        if (r.recordset.length === 0) {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "No existe un camión con esa patente" }, { status: 404 });
-        }
-        camionId = r.recordset[0].id as number;
-      }
-
-      // validar camión existe
-      {
-        const r = await new sql.Request(tx)
-          .input("camionId", sql.Int, camionId)
-          .query(`SELECT TOP 1 id FROM dbo.camiones WHERE id = @camionId`);
-        if (r.recordset.length === 0) {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "camionId no existe" }, { status: 404 });
-        }
-      }
-
-      // validar inspector si viene: rol operador y activo
-      if (inspectorId !== null) {
-        const r = await new sql.Request(tx)
-          .input("inspectorId", sql.Int, inspectorId)
-          .query(`SELECT TOP 1 id, rol, activo FROM dbo.usuarios WHERE id = @inspectorId`);
-
-        if (r.recordset.length === 0) {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "inspectorId no existe" }, { status: 404 });
-        }
-
-        const row = r.recordset[0] as any;
-        if (row.rol !== "operador") {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "El usuario no es operador (inspector)" }, { status: 400 });
-        }
-        if (Number(row.activo) !== 1) {
-          await tx.rollback();
-          return NextResponse.json({ ok: false, error: "El inspector está inactivo" }, { status: 400 });
-        }
-      }
-
-      // evitar duplicado: PROGRAMADA mismo día
-      {
-        const r = await new sql.Request(tx)
-          .input("camionId", sql.Int, camionId)
-          .input("fecha", sql.DateTime2, fechaProgramada)
-          .query(`
-            SELECT TOP 1 id
-            FROM dbo.inspecciones
-            WHERE camion_id = @camionId
-              AND estado = 'PROGRAMADA'
-              AND CONVERT(date, fecha_programada) = CONVERT(date, @fecha)
-          `);
-
-        if (r.recordset.length > 0) {
-          await tx.rollback();
-          return NextResponse.json(
-            { ok: false, error: "Ya existe una inspección PROGRAMADA para ese camión en esa fecha" },
-            { status: 409 }
-          );
-        }
-      }
-
-      const ins = await new sql.Request(tx)
-        .input("camionId", sql.Int, camionId)
-        .input("inspectorId", sql.Int, inspectorId)
-        .input("fechaProgramada", sql.DateTime2, fechaProgramada)
-        .input("estado", sql.VarChar(20), "PROGRAMADA")
-        .input("observaciones", sql.NVarChar(500), observaciones)
-        .query(`
-          INSERT INTO dbo.inspecciones
-            (camion_id, inspector_id, fecha_programada, estado, observaciones, created_at)
-          OUTPUT INSERTED.id
-          VALUES
-            (@camionId, @inspectorId, @fechaProgramada, @estado, @observaciones, SYSUTCDATETIME())
-        `);
-
-      const newId = ins.recordset[0].id as number;
-
-      await tx.commit();
-
-      return NextResponse.json(
-        {
-          ok: true,
-          inspeccion: {
-            id: newId,
-            camionId,
-            inspectorId,
-            fechaProgramada: fechaProgramada.toISOString(),
-            estado: "PROGRAMADA",
-          },
-        },
-        { status: 201 }
-      );
-    } catch (e) {
-      try { await tx.rollback(); } catch {}
-      throw e;
+    if (cam.recordset.length === 0) {
+      return NextResponse.json({ ok: false, error: "Camión no existe" }, { status: 404 });
     }
+
+    // Evitar doble agenda futura
+    const exists = await pool.request()
+      .input("camionId", sql.Int, camionId)
+      .query(`
+        SELECT TOP 1 id
+        FROM dbo.inspecciones
+        WHERE camion_id = @camionId
+          AND estado = 'PROGRAMADA'
+          AND fecha_programada >= SYSUTCDATETIME()
+      `);
+
+    if (exists.recordset.length > 0) {
+      return NextResponse.json(
+        { ok: false, error: "Este camión ya tiene una inspección programada" },
+        { status: 409 }
+      );
+    }
+
+    const ins = await pool.request()
+      .input("camionId", sql.Int, camionId)
+      .input("fecha", sql.DateTime2, fecha)
+      .input("obs", sql.NVarChar(1000), observaciones)
+      .query(`
+        INSERT INTO dbo.inspecciones
+          (camion_id, inspector_id, fecha_programada, estado, observaciones_generales)
+        OUTPUT INSERTED.id
+        VALUES
+          (@camionId, NULL, @fecha, 'PROGRAMADA', @obs)
+      `);
+
+    return NextResponse.json(
+      { ok: true, inspeccionId: ins.recordset?.[0]?.id ?? null },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("POST /api/admin/inspecciones error:", err);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
