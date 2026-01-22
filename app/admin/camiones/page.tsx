@@ -22,15 +22,19 @@ type Row = {
   ui_estado: "SIN_AGENDA" | "PROGRAMADA" | "VENCIDA" | string;
   inspeccionProgramada: null | {
     id: number;
-    fechaProgramada: string | null;
+    fechaProgramada: string | null; // ahora viene "YYYY-MM-DDTHH:mm"
     inspector: null | { id: number; nombre: string | null };
   };
 };
 
-function formatDateLocal(iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
+// ✅ Soporta "YYYY-MM-DDTHH:mm" sin timezone
+function formatDateLocal(value?: string | null) {
+  if (!value) return "—";
+
+  // Si viene como "YYYY-MM-DDTHH:mm", Date() lo toma como local
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
+
   return d.toLocaleString("es-CL", {
     year: "numeric",
     month: "2-digit",
@@ -42,17 +46,15 @@ function formatDateLocal(iso?: string | null) {
 
 function toDatetimeLocalValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-    d.getDate()
-  )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
 }
 
 export default function AdminCamionesPage() {
   const router = useRouter();
 
-  const [tab, setTab] = useState<"SIN_AGENDA" | "PROGRAMADA" | "VENCIDA">(
-    "SIN_AGENDA"
-  );
+  const [tab, setTab] = useState<"SIN_AGENDA" | "PROGRAMADA" | "VENCIDA">("SIN_AGENDA");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,10 +144,11 @@ export default function AdminCamionesPage() {
     setObs("");
     setModalTitle("Reagendar inspección");
 
-    const iso = row.inspeccionProgramada?.fechaProgramada;
-    if (iso) {
-      const d = new Date(iso);
-      setFechaLocal(toDatetimeLocalValue(d));
+    const localStr = row.inspeccionProgramada?.fechaProgramada;
+
+    // ✅ FIX TZ: ya viene "YYYY-MM-DDTHH:mm", se setea directo
+    if (localStr && typeof localStr === "string" && localStr.length >= 16) {
+      setFechaLocal(localStr.slice(0, 16));
     } else {
       const d = new Date();
       d.setDate(d.getDate() + 1);
@@ -169,7 +172,6 @@ export default function AdminCamionesPage() {
       body: JSON.stringify({ action: "CANCELAR" }),
     });
 
-    // ✅ debug respuesta
     const rawText = await res.text();
     let data: any = null;
     try {
@@ -196,7 +198,7 @@ export default function AdminCamionesPage() {
         return;
       }
 
-      // ✅ FIX TZ: enviar datetime-local tal cual (sin toISOString)
+      // ✅ enviar datetime-local tal cual
       const fechaProgramada = fechaLocal;
 
       const inspeccionId = selected.inspeccionProgramada?.id;
@@ -219,28 +221,17 @@ export default function AdminCamionesPage() {
             observaciones: obs.trim() ? obs.trim() : null,
           };
 
-      // 🔎 logs útiles
-      console.log("[REAGENDAR] selected.id (camionId):", selected.id);
-      console.log("[REAGENDAR] inspeccionProgramada:", selected.inspeccionProgramada);
-      console.log("[REAGENDAR] method:", method, "url:", url, "payload:", payload);
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      // ✅ debug respuesta
       const rawText = await res.text();
-      console.log("[REAGENDAR] status:", res.status);
-      console.log("[REAGENDAR] raw response:", rawText);
-
       let data: any = null;
       try {
         data = rawText ? JSON.parse(rawText) : null;
       } catch {}
-
-      console.log("[REAGENDAR] parsed response:", data);
 
       if (!res.ok || !data?.ok) {
         setModalError(data?.error ?? "No se pudo guardar");
@@ -330,7 +321,7 @@ export default function AdminCamionesPage() {
       <div style={{ border: "1px solid #eee", borderRadius: 14, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: hintBack() }}>
+            <tr style={{ background: "#fafafa" }}>
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Patente</th>
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Marca / Modelo</th>
               <th style={{ textAlign: "left", padding: 12, borderBottom: "1px solid #eee" }}>Año</th>
@@ -436,6 +427,7 @@ export default function AdminCamionesPage() {
         </table>
       </div>
 
+      {/* Modal (Agendar/Reagendar) */}
       {open && selected && (
         <div
           role="dialog"
@@ -564,9 +556,4 @@ export default function AdminCamionesPage() {
       )}
     </div>
   );
-}
-
-/** tiny helper to avoid lint complaining in pasted file */
-function hintBack() {
-  return "#fafafa";
 }
