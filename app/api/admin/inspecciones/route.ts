@@ -84,17 +84,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ IMPORTANTE: fecha_inspeccion es NOT NULL → la llenamos con la misma fecha programada
+    // ✅ Defaults para columnas NOT NULL
+    const ESTADO_DEFAULT = "PROGRAMADA";
+    const RESULTADO_DEFAULT = "PENDIENTE";
+
     const ins = await pool.request()
       .input("camionId", sql.Int, camionId)
       .input("fecha", sql.DateTime2, fecha)
+      .input("estado", sql.VarChar(20), ESTADO_DEFAULT)
+      .input("resultado", sql.VarChar(20), RESULTADO_DEFAULT)
       .input("obs", sql.NVarChar(sql.MAX), observaciones)
       .query(`
         INSERT INTO dbo.inspecciones
-          (camion_id, inspector_id, fecha_inspeccion, fecha_programada, estado, observaciones_generales)
+          (camion_id, inspector_id, fecha_inspeccion, fecha_programada, estado, resultado_general, observaciones_generales)
         OUTPUT INSERTED.id
         VALUES
-          (@camionId, NULL, @fecha, @fecha, 'PROGRAMADA', @obs)
+          (@camionId, NULL, @fecha, @fecha, @estado, @resultado, @obs)
       `);
 
     return NextResponse.json(
