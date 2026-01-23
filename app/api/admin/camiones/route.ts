@@ -48,13 +48,7 @@ export async function GET(req: NextRequest) {
       where.push("c.patente = @patente");
     }
 
-    /**
-     * ✅ FIX 1: Solo considerar inspección vigente PROGRAMADA
-     * - Si se cancela, desaparece del OUTER APPLY => pasa a SIN_AGENDA
-     *
-     * ✅ FIX 2: Fechas como string "YYYY-MM-DDTHH:mm" (sin timezone)
-     * - Evita el corrimiento 27->26 y 00:00->20:00
-     */
+    // ✅ Traemos inspector nombre/email con LEFT JOIN
     const query = `
       SELECT
         c.id            AS camion_id,
@@ -64,7 +58,7 @@ export async function GET(req: NextRequest) {
         c.anio,
         c.tipo,
         c.carroceria,
-        CONVERT(varchar(16), c.created_at, 126) AS created_at_local, -- YYYY-MM-DDTHH:mm
+        CONVERT(varchar(16), c.created_at, 126) AS created_at_local,
 
         e.id            AS empresa_id,
         e.nombre        AS empresa_nombre,
@@ -73,9 +67,9 @@ export async function GET(req: NextRequest) {
         e.telefono_contacto,
 
         ip.id           AS inspeccion_id,
-        CONVERT(varchar(16), ip.fecha_programada, 126) AS fecha_programada_local, -- YYYY-MM-DDTHH:mm
+        CONVERT(varchar(16), ip.fecha_programada, 126) AS fecha_programada_local,
         ip.inspector_id,
-        ip.estado       AS inspeccion_estado
+        u.nombre        AS inspector_nombre
 
       FROM dbo.camiones c
       JOIN dbo.proveedores p ON p.id = c.proveedor_id
@@ -89,23 +83,21 @@ export async function GET(req: NextRequest) {
         ORDER BY i.fecha_programada DESC
       ) ip
 
+      LEFT JOIN dbo.usuarios u ON u.id = ip.inspector_id
+
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY c.created_at DESC
     `;
 
     const r = await request.query(query);
-
-    // "Ahora" en hora local del servidor SQL: usaremos un Date de Node solo para comparar
     const now = new Date();
 
     const camiones = r.recordset.map((row: any) => {
       const fechaStr: string | null = row.fecha_programada_local ?? null;
 
       let ui_estado: "SIN_AGENDA" | "PROGRAMADA" | "VENCIDA" = "SIN_AGENDA";
-
       if (fechaStr) {
-        // Fecha viene como "YYYY-MM-DDTHH:mm" => Date() lo interpreta como local
-        const d = new Date(fechaStr);
+        const d = new Date(fechaStr); // local
         ui_estado = d.getTime() >= now.getTime() ? "PROGRAMADA" : "VENCIDA";
       }
 
@@ -117,8 +109,6 @@ export async function GET(req: NextRequest) {
         anio: row.anio ?? null,
         tipo: row.tipo ?? null,
         carroceria: row.carroceria ?? null,
-
-        // ✅ createdAt local string (sin timezone)
         createdAt: row.created_at_local ?? null,
 
         empresa: {
@@ -131,21 +121,19 @@ export async function GET(req: NextRequest) {
 
         ui_estado,
 
-        // ✅ solo existe si hay una PROGRAMADA vigente
         inspeccionProgramada: row.inspeccion_id
           ? {
               id: Number(row.inspeccion_id),
-              // ✅ fecha local string "YYYY-MM-DDTHH:mm"
               fechaProgramada: row.fecha_programada_local ?? null,
-              inspector: row.inspector_id ? { id: Number(row.inspector_id), nombre: null } : null,
+              inspector: row.inspector_id
+                ? { id: Number(row.inspector_id), nombre: row.inspector_nombre ?? null }
+                : null,
             }
           : null,
       };
     });
 
-    // Filtrar según tab
     const filtered = camiones.filter((c: any) => c.ui_estado === estado);
-
     return NextResponse.json({ ok: true, camiones: filtered }, { status: 200 });
   } catch (err) {
     console.error("GET /api/admin/camiones error:", err);

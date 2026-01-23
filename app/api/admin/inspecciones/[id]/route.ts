@@ -20,12 +20,10 @@ function getPool() {
   return poolPromise;
 }
 
-// ✅ "YYYY-MM-DDTHH:mm"
 function isValidDatetimeLocal(s: unknown) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s);
 }
 
-// PATCH: reagendar o cancelar
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = requireAdmin(req);
@@ -33,13 +31,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
     }
 
-    // ✅ Robust id: params + fallback URL
     const idFromParams = params?.id;
     const idFromPath = req.nextUrl.pathname.split("/").pop();
     const idStr = idFromParams ?? idFromPath ?? "";
     const inspeccionId = Number(idStr);
-
-    console.log("PATCH /inspecciones/[id] idStr:", idStr, "parsed:", inspeccionId, "path:", req.nextUrl.pathname);
 
     if (!Number.isInteger(inspeccionId) || inspeccionId <= 0) {
       return NextResponse.json({ ok: false, error: "id inválido" }, { status: 400 });
@@ -51,10 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const action = (body as any).action;
-
     const pool = await getPool();
 
-    // Debe existir y estar PROGRAMADA
     const current = await pool.request()
       .input("id", sql.Int, inspeccionId)
       .query(`
@@ -68,7 +61,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const estadoActual = String(current.recordset[0].estado);
-
     if (estadoActual !== "PROGRAMADA") {
       return NextResponse.json(
         { ok: false, error: "Solo se puede modificar una inspección PROGRAMADA" },
@@ -92,13 +84,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const fechaLocal = (body as any).fechaProgramada;
       const obs = typeof (body as any).observaciones === "string" ? (body as any).observaciones.trim() : null;
 
+      const inspectorIdRaw = (body as any).inspectorId;
+      const inspectorId =
+        inspectorIdRaw === null || inspectorIdRaw === undefined || inspectorIdRaw === ""
+          ? null
+          : Number(inspectorIdRaw);
+
       if (!isValidDatetimeLocal(fechaLocal)) {
         return NextResponse.json({ ok: false, error: "fechaProgramada inválida" }, { status: 400 });
+      }
+      if (inspectorId !== null && (!Number.isInteger(inspectorId) || inspectorId <= 0)) {
+        return NextResponse.json({ ok: false, error: "inspectorId inválido" }, { status: 400 });
       }
 
       const fechaSql = `${fechaLocal.replace("T", " ")}:00`;
 
-      // Validación futura en SQL (evita TZ issues en Vercel)
+      // Si viene inspector, validar
+      if (inspectorId !== null) {
+        const insp = await pool.request()
+          .input("id", sql.Int, inspectorId)
+          .query(`
+            SELECT TOP 1 id
+            FROM dbo.usuarios
+            WHERE id = @id
+              AND activo = 1
+              AND rol = 'operador'
+          `);
+        if (insp.recordset.length === 0) {
+          return NextResponse.json({ ok: false, error: "Inspector no existe o no está activo" }, { status: 404 });
+        }
+      }
+
+      // Validación futura en SQL
       await pool.request()
         .input("fecha", sql.NVarChar(19), fechaSql)
         .query(`
@@ -109,12 +126,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       await pool.request()
         .input("id", sql.Int, inspeccionId)
         .input("fecha", sql.NVarChar(19), fechaSql)
+        .input("inspectorId", sql.Int, inspectorId)
         .input("obs", sql.NVarChar(sql.MAX), obs)
         .query(`
           UPDATE dbo.inspecciones
           SET
             fecha_programada = CONVERT(datetime2, @fecha, 120),
             fecha_inspeccion = CONVERT(datetime2, @fecha, 120),
+            inspector_id = @inspectorId,
             observaciones_generales = COALESCE(NULLIF(@obs, ''), observaciones_generales)
           WHERE id = @id
         `);

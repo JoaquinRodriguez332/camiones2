@@ -22,17 +22,21 @@ type Row = {
   ui_estado: "SIN_AGENDA" | "PROGRAMADA" | "VENCIDA" | string;
   inspeccionProgramada: null | {
     id: number;
-    fechaProgramada: string | null; // ahora viene "YYYY-MM-DDTHH:mm"
+    fechaProgramada: string | null; // "YYYY-MM-DDTHH:mm"
     inspector: null | { id: number; nombre: string | null };
   };
+};
+
+type Inspector = {
+  id: number;
+  nombre: string | null;
+  email: string | null;
 };
 
 // ✅ Soporta "YYYY-MM-DDTHH:mm" sin timezone
 function formatDateLocal(value?: string | null) {
   if (!value) return "—";
-
-  // Si viene como "YYYY-MM-DDTHH:mm", Date() lo toma como local
-  const d = new Date(value);
+  const d = new Date(value); // si viene "YYYY-MM-DDTHH:mm", lo toma como local
   if (Number.isNaN(d.getTime())) return "—";
 
   return d.toLocaleString("es-CL", {
@@ -60,6 +64,10 @@ export default function AdminCamionesPage() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
 
+  // ✅ Inspectores (para asignar)
+  const [inspectores, setInspectores] = useState<Inspector[]>([]);
+  const [loadingInspectores, setLoadingInspectores] = useState(false);
+
   // Modal state (sirve para agendar y reagendar)
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Row | null>(null);
@@ -70,6 +78,7 @@ export default function AdminCamionesPage() {
     d.setHours(10, 0, 0, 0);
     return toDatetimeLocalValue(d);
   });
+  const [inspectorId, setInspectorId] = useState<string>(""); // "" = sin asignar
   const [obs, setObs] = useState("");
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -111,10 +120,33 @@ export default function AdminCamionesPage() {
     }
   }
 
+  async function loadInspectores() {
+    setLoadingInspectores(true);
+    try {
+      const res = await fetch("/api/admin/inspectores", { method: "GET", cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setInspectores([]);
+        return;
+      }
+      const list = Array.isArray(data.inspectores) ? (data.inspectores as Inspector[]) : [];
+      setInspectores(list);
+    } catch {
+      setInspectores([]);
+    } finally {
+      setLoadingInspectores(false);
+    }
+  }
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  // ✅ Cargar inspectores una vez
+  useEffect(() => {
+    loadInspectores();
+  }, []);
 
   function closeModal() {
     if (saving) return;
@@ -122,6 +154,7 @@ export default function AdminCamionesPage() {
     setSelected(null);
     setModalError(null);
     setObs("");
+    setInspectorId("");
   }
 
   function openAgendarModal(row: Row) {
@@ -134,6 +167,9 @@ export default function AdminCamionesPage() {
     d.setDate(d.getDate() + 1);
     d.setHours(10, 0, 0, 0);
     setFechaLocal(toDatetimeLocalValue(d));
+
+    // por defecto: sin inspector
+    setInspectorId("");
 
     setOpen(true);
   }
@@ -155,6 +191,10 @@ export default function AdminCamionesPage() {
       d.setHours(10, 0, 0, 0);
       setFechaLocal(toDatetimeLocalValue(d));
     }
+
+    // ✅ preseleccionar inspector actual si existe
+    const currentInspectorId = row.inspeccionProgramada?.inspector?.id;
+    setInspectorId(currentInspectorId ? String(currentInspectorId) : "");
 
     setOpen(true);
   }
@@ -209,15 +249,20 @@ export default function AdminCamionesPage() {
 
       const method = inspeccionId ? "PATCH" : "POST";
 
+      const inspectorIdValue =
+        inspectorId && inspectorId.trim() ? Number(inspectorId) : null;
+
       const payload = inspeccionId
         ? {
             action: "REAGENDAR",
             fechaProgramada,
+            inspectorId: inspectorIdValue,
             observaciones: obs.trim() ? obs.trim() : null,
           }
         : {
             camionId: selected.id,
             fechaProgramada,
+            inspectorId: inspectorIdValue,
             observaciones: obs.trim() ? obs.trim() : null,
           };
 
@@ -364,6 +409,9 @@ export default function AdminCamionesPage() {
                     {r.ui_estado === "PROGRAMADA" && r.inspeccionProgramada?.fechaProgramada && (
                       <small style={{ color: "#666" }}>
                         {formatDateLocal(r.inspeccionProgramada.fechaProgramada)}
+                        {r.inspeccionProgramada.inspector?.nombre
+                          ? ` · ${r.inspeccionProgramada.inspector.nombre}`
+                          : ""}
                       </small>
                     )}
                   </td>
@@ -496,6 +544,34 @@ export default function AdminCamionesPage() {
                   }}
                   disabled={saving}
                 />
+              </div>
+
+              {/* ✅ Inspector a cargo */}
+              <div>
+                <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>
+                  Inspector a cargo (opcional)
+                </label>
+                <select
+                  value={inspectorId}
+                  onChange={(e) => setInspectorId(e.target.value)}
+                  disabled={saving || loadingInspectores}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #ddd",
+                    background: "#fff",
+                  }}
+                >
+                  <option value="">
+                    {loadingInspectores ? "Cargando inspectores..." : "Sin asignar"}
+                  </option>
+                  {inspectores.map((i) => (
+                    <option key={i.id} value={String(i.id)}>
+                      {i.nombre ?? `Inspector #${i.id}`}{i.email ? ` · ${i.email}` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
