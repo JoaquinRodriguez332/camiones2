@@ -20,7 +20,6 @@ function getPool() {
   return poolPromise;
 }
 
-// ✅ "YYYY-MM-DDTHH:mm"
 function isValidDatetimeLocal(s: unknown) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s);
 }
@@ -39,6 +38,7 @@ export async function POST(req: NextRequest) {
 
     const camionId = (body as any).camionId;
     const fechaLocal = (body as any).fechaProgramada;
+    const inspectorIdRaw = (body as any).inspectorId;
     const observaciones = typeof (body as any).observaciones === "string" ? (body as any).observaciones.trim() : null;
 
     if (!Number.isInteger(camionId) || camionId <= 0) {
@@ -48,8 +48,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "fechaProgramada inválida" }, { status: 400 });
     }
 
-    const fechaSql = `${fechaLocal.replace("T", " ")}:00`;
+    const inspectorId =
+      inspectorIdRaw === null || inspectorIdRaw === undefined || inspectorIdRaw === ""
+        ? null
+        : Number(inspectorIdRaw);
 
+    if (inspectorId !== null && (!Number.isInteger(inspectorId) || inspectorId <= 0)) {
+      return NextResponse.json({ ok: false, error: "inspectorId inválido" }, { status: 400 });
+    }
+
+    const fechaSql = `${fechaLocal.replace("T", " ")}:00`;
     const pool = await getPool();
 
     // Verificar camión
@@ -61,7 +69,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Camión no existe" }, { status: 404 });
     }
 
-    // Evitar doble agenda futura (usar SYSDATETIME para coherencia con datetime2 local)
+    // Verificar inspector si viene
+    if (inspectorId !== null) {
+      const insp = await pool.request()
+        .input("id", sql.Int, inspectorId)
+        .query(`
+          SELECT TOP 1 id
+          FROM dbo.usuarios
+          WHERE id = @id
+            AND activo = 1
+            AND rol = 'operador'
+        `);
+
+      if (insp.recordset.length === 0) {
+        return NextResponse.json({ ok: false, error: "Inspector no existe o no está activo" }, { status: 404 });
+      }
+    }
+
+    // Evitar doble agenda futura
     const exists = await pool.request()
       .input("camionId", sql.Int, camionId)
       .query(`
@@ -79,7 +104,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validar futura en SQL
+    // Validación futura en SQL
     await pool.request()
       .input("fecha", sql.NVarChar(19), fechaSql)
       .query(`
@@ -90,13 +115,14 @@ export async function POST(req: NextRequest) {
     const ins = await pool.request()
       .input("camionId", sql.Int, camionId)
       .input("fecha", sql.NVarChar(19), fechaSql)
+      .input("inspectorId", sql.Int, inspectorId)
       .input("obs", sql.NVarChar(sql.MAX), observaciones)
       .query(`
         INSERT INTO dbo.inspecciones
           (camion_id, inspector_id, fecha_inspeccion, fecha_programada, estado, resultado_general, observaciones_generales)
         OUTPUT INSERTED.id
         VALUES
-          (@camionId, NULL,
+          (@camionId, @inspectorId,
            CONVERT(datetime2, @fecha, 120),
            CONVERT(datetime2, @fecha, 120),
            'PROGRAMADA', 'observado', @obs)
@@ -111,4 +137,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
-
