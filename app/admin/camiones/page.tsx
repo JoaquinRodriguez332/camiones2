@@ -123,7 +123,7 @@ export default function AdminCamionesPage() {
   async function loadInspectores() {
     setLoadingInspectores(true);
     try {
-      const res = await fetch("/api/admin/inspectores", { method: "GET", cache: "no-store" });
+      const res = await fetch("/api/admin/inspectores", { method: "GET", cache: "no-store", credentials: "include" });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
         setInspectores([]);
