@@ -8,7 +8,7 @@ export type StaffSession = {
   rol: StaffRole;
 };
 
-function normalizeRole(r: unknown): StaffRole | null {
+export function normalizeRole(r: unknown): StaffRole | null {
   const x = String(r ?? "").trim().toLowerCase();
   if (x === "admin" || x === "inspector") return x;
   return null;
@@ -46,4 +46,8 @@ export function requireInspector(req: NextRequest): StaffSession | null {
   const s = getStaffSession(req);
   if (!s) return null;
   return s.rol === "inspector" ? s : null;
+}
+
+export function verifyTokenFromRequest(req: NextRequest): StaffSession | null {
+  return getStaffSession(req);
 }

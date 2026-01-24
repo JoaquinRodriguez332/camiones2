@@ -49,8 +49,8 @@ export default function LoginPage() {
         return;
       }
 
-      if (rol === "operador") {
-        // Si todavía no tienes /inspector, crea un placeholder o usa /admin/camiones temporalmente
+      if (rol === "inspector") {
+        // Redirigir a panel del inspector
         window.location.href = "/inspector";
         return;
       }

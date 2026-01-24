@@ -9,16 +9,40 @@ let poolPromise: Promise<sql.ConnectionPool> | null = null;
 
 function getPool() {
   if (!poolPromise) {
+    const user = process.env.AZURE_SQL_USER;
+    const password = process.env.AZURE_SQL_PASSWORD;
+    const server = process.env.AZURE_SQL_SERVER;
+    const database = process.env.AZURE_SQL_DATABASE;
+
+    if (!user || !password || !server || !database) {
+      throw new Error(
+        `Missing database config: user=${!!user}, password=${!!password}, server=${!!server}, database=${!!database}`
+      );
+    }
+
+    console.log(`[DB] Connecting to server: ${server}, database: ${database}, user: ${user}`);
+
     poolPromise = new sql.ConnectionPool({
-      user: process.env.AZURE_SQL_USER,
-      password: process.env.AZURE_SQL_PASSWORD,
-      server: process.env.AZURE_SQL_SERVER!,
-      database: process.env.AZURE_SQL_DATABASE!,
-      options: { encrypt: true, trustServerCertificate: false },
+      user,
+      password,
+      server,
+      database,
+      options: { 
+        encrypt: true, 
+        trustServerCertificate: false,
+        connectTimeout: 30000,
+      },
       connectionTimeout: 30000,
       requestTimeout: 30000,
       pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
-    }).connect();
+    }).connect().then(pool => {
+      console.log("[DB] Connection pool created successfully");
+      return pool;
+    }).catch(err => {
+      console.error("[DB] Connection pool error:", err);
+      poolPromise = null;
+      throw err;
+    });
   }
   return poolPromise;
 }

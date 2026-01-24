@@ -1,16 +1,18 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { InspectorLoginForm } from "./login-form";
 
 export default function InspectorLoginPage() {
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+    <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login inspector</CardTitle>
+          <CardTitle className="text-2xl text-center">Login Inspector</CardTitle>
+          <CardDescription className="text-center">
+            Acceso al panel de inspecciones
+          </CardDescription>
         </CardHeader>
         <CardContent>
-           <p className="text-center text-muted-foreground mb-4">Formulario de acceso aquí</p>
-           <Button className="w-full">Ingresar</Button>
+          <InspectorLoginForm />
         </CardContent>
       </Card>
     </div>
