@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import InspeccionForm from "@/components/modules/inspecciones/inspeccion-form";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ interface Inspeccion {
   fechaInspeccion: string | null;
 }
 
-export default function InspectorInspeccionPage() {
+function InspectorInspeccionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -174,5 +174,13 @@ export default function InspectorInspeccionPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function InspectorInspeccionPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen"><Spinner /></div>}>
+      <InspectorInspeccionContent />
+    </Suspense>
   );
 }
