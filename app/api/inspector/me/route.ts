@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
           id,
           email,
           nombre = email,
-          role,
+          rol,
           activo
         FROM usuarios
         WHERE id = @usuario_id AND role = 'inspector' AND activo = 1

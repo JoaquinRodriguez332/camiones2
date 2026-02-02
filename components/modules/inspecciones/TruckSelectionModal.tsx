@@ -93,21 +93,21 @@ export function TruckSelectionModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-neutral-900 rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+      <div className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-800">
+        <div className="flex items-center justify-between p-4 border-b border-neutral-200">
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
           >
-            <ChevronLeft className="h-5 w-5 text-neutral-400" />
+            <ChevronLeft className="h-5 w-5 text-neutral-600" />
           </button>
-          <span className="text-sm text-neutral-400 font-medium">
+          <span className="text-sm text-neutral-500 font-medium">
             {new Date().toLocaleDateString("es-CL", {
               weekday: "short",
               month: "short",
@@ -117,9 +117,9 @@ export function TruckSelectionModal({
           </span>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
           >
-            <Calendar className="h-5 w-5 text-neutral-400" />
+            <Calendar className="h-5 w-5 text-neutral-600" />
           </button>
         </div>
 
@@ -128,7 +128,7 @@ export function TruckSelectionModal({
           {/* Truck Image Placeholder */}
           <div className="relative h-40 bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-2xl mb-4 overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center">
-              <Truck className="h-20 w-20 text-neutral-700" />
+              <Truck className="h-20 w-20 text-neutral-600" />
             </div>
             <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
               {truck.estado === "programado" ? "Programado" : "Disponible"}
@@ -140,25 +140,25 @@ export function TruckSelectionModal({
             <div className="flex items-center justify-between mb-2">
               <div>
                 <p className="text-xs text-neutral-500">Truck ID: {truck.patente}</p>
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg font-bold text-neutral-900">
                   {truck.marca} {truck.modelo}
                 </h2>
               </div>
-              <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+              <button className="px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors">
                 Detalles
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2 text-neutral-400">
-                <span className="font-medium text-neutral-300">Tipo:</span>
+              <div className="flex items-center gap-2 text-neutral-600">
+                <span className="font-medium text-neutral-900">Tipo:</span>
                 <span>{truck.tipo || "Camión"}</span>
               </div>
-              <div className="flex items-center gap-2 text-neutral-400">
-                <span className="font-medium text-neutral-300">Año:</span>
+              <div className="flex items-center gap-2 text-neutral-600">
+                <span className="font-medium text-neutral-900">Año:</span>
                 <span>{truck.anio}</span>
               </div>
-              <div className="flex items-center gap-2 text-neutral-400 col-span-2">
+              <div className="flex items-center gap-2 text-neutral-500 col-span-2">
                 <MapPin className="h-4 w-4" />
                 <span>{truck.empresa}</span>
               </div>
@@ -167,7 +167,7 @@ export function TruckSelectionModal({
 
           {/* Inspection Types - Scrollable */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-neutral-300 mb-3">
+            <h3 className="text-sm font-semibold text-neutral-700 mb-3">
               Tipo de Inspección
             </h3>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
@@ -183,12 +183,12 @@ export function TruckSelectionModal({
                     "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
                     idx === 0
                       ? "bg-red-600 text-white"
-                      : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
                   )}
                 >
                   {type.label}
                   {type.count > 0 && (
-                    <span className="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">
+                    <span className="bg-black/10 text-xs px-1.5 py-0.5 rounded-full">
                       {type.count}
                     </span>
                   )}
@@ -199,7 +199,7 @@ export function TruckSelectionModal({
 
           {/* Calendar Section */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-neutral-300 mb-3">
+            <h3 className="text-sm font-semibold text-neutral-700 mb-3">
               Seleccionar Fecha
             </h3>
 
@@ -207,18 +207,18 @@ export function TruckSelectionModal({
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => navigateMonth("prev")}
-                className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <ChevronLeft className="h-5 w-5 text-neutral-400" />
+                <ChevronLeft className="h-5 w-5 text-neutral-600" />
               </button>
-              <span className="font-semibold text-white capitalize">
+              <span className="font-semibold text-neutral-900 capitalize">
                 {currentMonth}
               </span>
               <button
                 onClick={() => navigateMonth("next")}
-                className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <ChevronRight className="h-5 w-5 text-neutral-400" />
+                <ChevronRight className="h-5 w-5 text-neutral-600" />
               </button>
             </div>
 
@@ -250,12 +250,12 @@ export function TruckSelectionModal({
                   className={cn(
                     "aspect-square flex items-center justify-center text-sm rounded-lg transition-all",
                     day === null && "invisible",
-                    day && isToday(day) && "bg-red-900/50 text-red-400 font-bold",
+                    day && isToday(day) && "bg-red-100 text-red-600 font-bold",
                     day && isSelected(day) && "bg-red-600 text-white font-bold",
                     day &&
                       !isToday(day) &&
                       !isSelected(day) &&
-                      "text-neutral-300 hover:bg-neutral-800"
+                      "text-neutral-700 hover:bg-neutral-100"
                   )}
                 >
                   {day}
@@ -266,33 +266,33 @@ export function TruckSelectionModal({
 
           {/* Recent Inspections */}
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-neutral-300 mb-3">
+            <h3 className="text-sm font-semibold text-neutral-700 mb-3">
               Últimas Inspecciones
             </h3>
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 bg-neutral-800 rounded-xl">
+              <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-900/50 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-neutral-900">
                       Inspección Completa
                     </p>
                     <p className="text-xs text-neutral-500">Hace 3 días</p>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-neutral-600" />
+                <ChevronRight className="h-4 w-4 text-neutral-400" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer Buttons */}
-        <div className="p-4 border-t border-neutral-800 grid grid-cols-2 gap-3">
+        <div className="p-4 border-t border-neutral-200 grid grid-cols-2 gap-3">
           <button
             onClick={onClose}
-            className="py-3 px-6 bg-neutral-800 text-white font-semibold rounded-xl hover:bg-neutral-700 transition-colors"
+            className="py-3 px-6 bg-neutral-100 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-200 transition-colors"
           >
             CANCELAR
           </button>

@@ -1,111 +1,103 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/use-toast";
 import {
   ChevronLeft,
-  Camera,
-  Check,
-  X,
-  Circle,
+  Truck,
+  Building2,
+  Calendar,
   CheckCircle2,
-  XCircle,
-  MinusCircle,
-  Image as ImageIcon,
-  Loader2,
-  Trash2,
+  AlertCircle,
+  Camera,
+  ClipboardList,
+  Thermometer,
+  Box,
+  Container,
+  FileText,
+  Clock,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils-cn";
-import { ITEMS } from "@/lib/inspection/catalogo";
-import type { EstadoItem } from "@/lib/inspection/types";
 
-// Categorías para UI mobile
-const CATEGORIAS = [
-  { id: "frenos", nombre: "Frenos", secciones: ["Frenos (visual)"] },
-  { id: "neumaticos", nombre: "Neumáticos y Ruedas", secciones: ["Neumáticos (todos)"] },
-  { id: "chasis", nombre: "Chasis y Estructura", secciones: ["Chasis y estructura"] },
-  { id: "acople", nombre: "Acople / Quinta Rueda", secciones: ["Acople / Quinta rueda (si aplica)"] },
-  { id: "luces", nombre: "Luces y Señalización", secciones: ["Señalización trasera"] },
-  { id: "documentos", nombre: "Documentación", secciones: ["Coincidencia visual con documentos"] },
-  { id: "fluidos", nombre: "Sistema de Fluidos", secciones: ["Sistema de fluidos"] },
-  { id: "suspension", nombre: "Suspensión", secciones: ["Suspensión"] },
-  { id: "cabina", nombre: "Cabina", secciones: ["Cabina"] },
-  { id: "seguridad", nombre: "Equipo de Seguridad", secciones: ["Seguridad", "Coherencia general"] },
-  { id: "electrico", nombre: "Sistema Eléctrico", secciones: ["Sistema eléctrico"] },
-  { id: "accesos", nombre: "Accesos", secciones: ["Accesos"] },
-  { id: "estetico", nombre: "Estético / Confort", secciones: ["Estético / Confort"] },
-];
-
-interface FotoEvidencia {
-  id: string;
-  url: string;
-  publicId: string;
-}
-
-interface RespuestaItemExtended {
-  estado?: EstadoItem;
-  descripcionFalla?: string;
-  motivoNoAplica?: string;
-  fotos: FotoEvidencia[];
-}
-
-interface CamionInfo {
+interface CamionDetalle {
   id: number;
   patente: string;
   marca: string;
   modelo: string;
+  anio: number;
+  tipo: string;
+  tipo_remolque: string | null;
   empresa: string;
+  ultimaInspeccion: {
+    fecha: string;
+    nota: number;
+    resultado: string;
+  } | null;
 }
 
-export default function InspeccionPage() {
+// Tipos de remolque con sus iconos y categorías
+const TIPOS_REMOLQUE = [
+  {
+    id: "refrigerado",
+    nombre: "Refrigerado",
+    icon: Thermometer,
+    categorias: ["Sistema de frío", "Temperatura", "Aislamiento"],
+  },
+  {
+    id: "caja_seca",
+    nombre: "Caja Seca",
+    icon: Box,
+    categorias: ["Puertas", "Piso", "Paredes"],
+  },
+  {
+    id: "plataforma",
+    nombre: "Plataforma",
+    icon: Container,
+    categorias: ["Anclajes", "Barandas", "Superficie"],
+  },
+  {
+    id: "tanque",
+    nombre: "Tanque",
+    icon: Container,
+    categorias: ["Válvulas", "Sellos", "Mangueras"],
+  },
+];
+
+// Categorías base de inspección
+const CATEGORIAS_BASE = [
+  { id: "frenos", nombre: "Frenos", items: 4 },
+  { id: "neumaticos", nombre: "Neumáticos", items: 4 },
+  { id: "luces", nombre: "Luces", items: 6 },
+  { id: "chasis", nombre: "Chasis", items: 3 },
+  { id: "cabina", nombre: "Cabina", items: 5 },
+  { id: "documentos", nombre: "Documentos", items: 3 },
+];
+
+export default function PreInspeccionPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const camionId = params.camionId as string;
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [camion, setCamion] = useState<CamionInfo | null>(null);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-  const [respuestas, setRespuestas] = useState<Record<string, RespuestaItemExtended>>({});
-  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
-  const [activePhotoItemId, setActivePhotoItemId] = useState<string | null>(null);
+  const [camion, setCamion] = useState<CamionDetalle | null>(null);
+  const [tipoRemolqueSeleccionado, setTipoRemolqueSeleccionado] = useState<string | null>(null);
 
-  // Inicializar respuestas vacías
-  useEffect(() => {
-    const initial: Record<string, RespuestaItemExtended> = {};
-    ITEMS.forEach((item) => {
-      initial[item.id] = {
-        estado: undefined,
-        fotos: [],
-      };
-    });
-    setRespuestas(initial);
-  }, []);
-
-  // Cargar datos del camión
   useEffect(() => {
     async function loadCamion() {
       try {
-        const res = await fetch("/api/inspector/inspecciones/hoy");
+        const res = await fetch(`/api/inspector/inspecciones/camion/${camionId}`);
         if (!res.ok) throw new Error("Error al cargar datos");
 
         const data = await res.json();
-        const found = (data.data || []).find(
-          (insp: any) => String(insp.camion_id) === camionId
-        );
+        setCamion(data.data);
 
-        if (found) {
-          setCamion({
-            id: found.camion_id,
-            patente: found.patente,
-            marca: found.marca,
-            modelo: found.modelo,
-            empresa: found.empresa,
-          });
+        // Auto-seleccionar tipo de remolque si viene de la BD
+        if (data.data?.tipo_remolque) {
+          setTipoRemolqueSeleccionado(data.data.tipo_remolque);
         }
       } catch (error) {
         console.error(error);
@@ -122,559 +114,315 @@ export default function InspeccionPage() {
     loadCamion();
   }, [camionId, toast]);
 
-  const currentCategory = CATEGORIAS[currentCategoryIndex];
-
-  const getCategoryItems = (category: typeof CATEGORIAS[0]) => {
-    return ITEMS.filter((item) => category.secciones.includes(item.seccion));
+  const handleStartInspection = () => {
+    // Guardar tipo de remolque seleccionado en sessionStorage para usarlo en la inspección
+    if (tipoRemolqueSeleccionado) {
+      sessionStorage.setItem(`remolque_${camionId}`, tipoRemolqueSeleccionado);
+    }
+    router.push(`/inspector/inspeccion/${camionId}/activa`);
   };
 
-  const currentItems = getCategoryItems(currentCategory);
-
-  const getCategoryStats = (category: typeof CATEGORIAS[0]) => {
-    const items = getCategoryItems(category);
-    const total = items.length;
-    const respondidos = items.filter((i) => respuestas[i.id]?.estado).length;
-    const noCumple = items.filter((i) => respuestas[i.id]?.estado === "no_cumple").length;
-    return { total, respondidos, noCumple };
+  const getTipoRemolqueInfo = (tipoId: string | null) => {
+    return TIPOS_REMOLQUE.find((t) => t.id === tipoId);
   };
 
-  const currentStats = getCategoryStats(currentCategory);
-  const totalItems = ITEMS.length;
-  const totalRespondidos = ITEMS.filter((i) => respuestas[i.id]?.estado).length;
-  const progressPercent = Math.round((totalRespondidos / totalItems) * 100);
-
-  const handleItemResponse = (itemId: string, estado: EstadoItem) => {
-    setRespuestas((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        estado,
-        // Limpiar fotos si cambia de no_cumple a otro estado
-        fotos: estado === "no_cumple" ? prev[itemId]?.fotos || [] : [],
-      },
-    }));
-  };
-
-  // Subir foto a Cloudinary
-  const handlePhotoUpload = async (itemId: string, file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
-        description: "Solo se permiten imágenes",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "La imagen es muy grande (máximo 10MB)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploadingItemId(itemId);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("tipo", "inspeccion");
-      formData.append("camionId", camionId);
-      formData.append("categoria", itemId);
-
-      const response = await fetch("/api/inspector/fotos", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al subir foto");
-      }
-
-      const result = await response.json();
-
-      // Agregar foto al item
-      setRespuestas((prev) => ({
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          fotos: [
-            ...(prev[itemId]?.fotos || []),
-            {
-              id: result.data.publicId,
-              url: result.data.url,
-              publicId: result.data.publicId,
-            },
-          ],
-        },
-      }));
-
-      toast({
-        title: "Foto subida",
-        description: "La evidencia se guardó correctamente",
-      });
-    } catch (error) {
-      console.error("Error uploading photo:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo subir la foto",
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingItemId(null);
-      setActivePhotoItemId(null);
-    }
-  };
-
-  // Eliminar foto de Cloudinary
-  const handlePhotoDelete = async (itemId: string, photoId: string) => {
-    try {
-      await fetch("/api/inspector/fotos", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicId: photoId }),
-      });
-
-      setRespuestas((prev) => ({
-        ...prev,
-        [itemId]: {
-          ...prev[itemId],
-          fotos: prev[itemId]?.fotos.filter((f) => f.id !== photoId) || [],
-        },
-      }));
-    } catch (error) {
-      console.error("Error deleting photo:", error);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && activePhotoItemId) {
-      handlePhotoUpload(activePhotoItemId, file);
-    }
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const openPhotoSelector = (itemId: string, useCamera: boolean) => {
-    setActivePhotoItemId(itemId);
-    if (fileInputRef.current) {
-      if (useCamera) {
-        fileInputRef.current.setAttribute("capture", "environment");
-      } else {
-        fileInputRef.current.removeAttribute("capture");
-      }
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleNext = () => {
-    if (currentCategoryIndex < CATEGORIAS.length - 1) {
-      setCurrentCategoryIndex((prev) => prev + 1);
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentCategoryIndex > 0) {
-      setCurrentCategoryIndex((prev) => prev - 1);
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const handleSubmit = async () => {
-    const sinResponder = ITEMS.filter((i) => !respuestas[i.id]?.estado);
-    if (sinResponder.length > 0) {
-      toast({
-        title: "Inspección incompleta",
-        description: `Faltan ${sinResponder.length} items por responder`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // Calcular nota
-      let nota = 100;
-      const penalizacion = { 1: 30, 2: 15, 3: 7, 4: 2 };
-
-      ITEMS.forEach((item) => {
-        if (respuestas[item.id]?.estado === "no_cumple") {
-          nota -= penalizacion[item.nivel as 1 | 2 | 3 | 4] || 0;
-        }
-      });
-      nota = Math.max(0, nota);
-
-      // Preparar detalles con fotos
-      const detalles = ITEMS.map((item) => ({
-        itemId: item.id,
-        estado: respuestas[item.id]?.estado,
-        descripcionFalla: respuestas[item.id]?.descripcionFalla,
-        motivoNoAplica: respuestas[item.id]?.motivoNoAplica,
-        fotos: respuestas[item.id]?.fotos.map((f) => f.url) || [],
-      }));
-
-      // Recolectar todas las URLs de fotos para guardar
-      const todasLasFotos = ITEMS.flatMap(
-        (item) => respuestas[item.id]?.fotos.map((f) => f.url) || []
-      );
-
-      const response = await fetch(`/api/inspector/inspecciones/${camionId}/completar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          camionId: Number(camionId),
-          respuestas: detalles,
-          notaFinal: Math.round(nota),
-          observacionesGenerales: "",
-          fotos_evidencia: todasLasFotos, // URLs de Cloudinary
-        }),
-      });
-
-      if (!response.ok) throw new Error("Error al guardar");
-
-      toast({
-        title: "Inspección completada",
-        description: `Nota final: ${nota.toFixed(0)}/100`,
-      });
-
-      router.push(`/inspector/inspeccion/${camionId}/reporte`);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la inspección",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
+  const getResultadoColor = (resultado: string | undefined) => {
+    switch (resultado?.toLowerCase()) {
+      case "aprobado":
+      case "aprobada":
+        return "text-green-600 bg-green-100";
+      case "observado":
+      case "parcial":
+        return "text-yellow-600 bg-yellow-100";
+      case "rechazado":
+      case "rechazada":
+        return "text-red-600 bg-red-100";
+      default:
+        return "text-neutral-600 bg-neutral-100";
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner className="h-10 w-10 text-teal-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center space-y-4">
+          <Spinner className="h-10 w-10 mx-auto text-red-600" />
+          <p className="text-neutral-500">Cargando información...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-32">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
+  if (!camion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+          <p className="text-neutral-600 font-medium">Camión no encontrado</p>
+          <button
+            onClick={() => router.back()}
+            className="mt-4 text-red-600 font-medium"
+          >
+            Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
 
+  const tipoRemolqueInfo = getTipoRemolqueInfo(tipoRemolqueSeleccionado);
+  const totalItems =
+    CATEGORIAS_BASE.reduce((acc, cat) => acc + cat.items, 0) +
+    (tipoRemolqueInfo?.categorias.length || 0) * 3;
+
+  return (
+    <div className="min-h-screen bg-white pb-32">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-neutral-900 border-b border-neutral-800 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={() => router.back()}
-              className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 -ml-2 hover:bg-neutral-800 rounded-lg transition-colors"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-600" />
+              <ChevronLeft className="h-5 w-5 text-white" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-900">
-                {currentCategoryIndex + 1}/{CATEGORIAS.length}
-              </span>
-              <div className="flex gap-1">
-                {CATEGORIAS.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "w-2 h-2 rounded-full transition-all",
-                      idx === currentCategoryIndex
-                        ? "w-4 bg-teal-600"
-                        : idx < currentCategoryIndex
-                        ? "bg-teal-400"
-                        : "bg-gray-200"
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
+            <h1 className="font-semibold text-white">Pre-Inspección</h1>
 
             <div className="w-9" />
           </div>
         </div>
       </header>
 
-      {/* Category Title */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">
-          {currentCategory.nombre}
-        </h1>
-        <p className="text-sm text-gray-500">
-          {camion?.patente} - {camion?.marca} {camion?.modelo}
-        </p>
-      </div>
+      {/* Content */}
+      <div className="px-4 py-6 space-y-6">
+        {/* Información del Camión */}
+        <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-2xl p-5 text-white">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 bg-red-600/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+              <Truck className="h-7 w-7 text-red-500" />
+            </div>
 
-      {/* Stats Bar */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
-                Total
-              </span>
-              <span className="font-semibold text-gray-900">{currentStats.total}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded">
+                  {camion.patente}
+                </span>
+                <span className="text-neutral-400 text-xs">
+                  {camion.tipo}
+                </span>
+              </div>
+              <h2 className="text-lg font-bold truncate">
+                {camion.marca} {camion.modelo}
+              </h2>
+              <div className="flex items-center gap-2 mt-1 text-sm text-neutral-400">
+                <Building2 className="h-4 w-4" />
+                <span className="truncate">{camion.empresa}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs px-2 py-0.5 bg-red-50 rounded-full text-red-600">
-                Fallas
-              </span>
-              <span className="font-semibold text-red-600">{currentStats.noCumple}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            <span className="text-gray-600">
-              {currentStats.respondidos}/{currentStats.total}
-            </span>
           </div>
         </div>
-      </div>
 
-      {/* Items List */}
-      <div className="px-4 py-4 space-y-3">
-        {currentItems.map((item) => {
-          const respuesta = respuestas[item.id];
-          const estado = respuesta?.estado;
-          const fotos = respuesta?.fotos || [];
-          const isUploading = uploadingItemId === item.id;
+        {/* Última Inspección */}
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+            <Clock className="h-5 w-5 text-red-600" />
+            Última Inspección
+          </h3>
 
-          return (
-            <div
-              key={item.id}
-              className={cn(
-                "bg-white rounded-2xl border-2 p-4 transition-all",
-                estado === "cumple" && "border-green-200 bg-green-50/50",
-                estado === "no_cumple" && "border-red-200 bg-red-50/50",
-                estado === "no_aplica" && "border-gray-200 bg-gray-50/50",
-                !estado && "border-gray-100"
-              )}
-            >
-              {/* Item Header */}
-              <div className="flex items-start gap-3 mb-3">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                    estado === "cumple" && "bg-green-100",
-                    estado === "no_cumple" && "bg-red-100",
-                    estado === "no_aplica" && "bg-gray-100",
-                    !estado && "bg-gray-100"
-                  )}
-                >
-                  {estado === "cumple" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
-                  {estado === "no_cumple" && <XCircle className="h-5 w-5 text-red-600" />}
-                  {estado === "no_aplica" && <MinusCircle className="h-5 w-5 text-gray-400" />}
-                  {!estado && <Circle className="h-5 w-5 text-gray-300" />}
+          {camion.ultimaInspeccion ? (
+            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-neutral-200 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-neutral-600" />
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 text-sm leading-tight">
-                    {item.titulo}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {item.seccion} • N{item.nivel}
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">
+                    {new Date(camion.ultimaInspeccion.fecha).toLocaleDateString("es-CL", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    Hace {Math.floor((Date.now() - new Date(camion.ultimaInspeccion.fecha).getTime()) / (1000 * 60 * 60 * 24))} días
                   </p>
                 </div>
               </div>
 
-              {/* Response Buttons */}
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => handleItemResponse(item.id, "cumple")}
-                  className={cn(
-                    "py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5",
-                    estado === "cumple"
-                      ? "bg-green-500 text-white shadow-lg shadow-green-500/30"
-                      : "bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700"
-                  )}
-                >
-                  <Check className="h-4 w-4" />
-                  OK
-                </button>
-
-                <button
-                  onClick={() => handleItemResponse(item.id, "no_cumple")}
-                  className={cn(
-                    "py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5",
-                    estado === "no_cumple"
-                      ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                      : "bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700"
-                  )}
-                >
-                  <X className="h-4 w-4" />
-                  Falla
-                </button>
-
-                <button
-                  onClick={() => handleItemResponse(item.id, "no_aplica")}
-                  className={cn(
-                    "py-2.5 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1.5",
-                    estado === "no_aplica"
-                      ? "bg-gray-500 text-white shadow-lg shadow-gray-500/30"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  )}
-                >
-                  <MinusCircle className="h-4 w-4" />
-                  N/A
-                </button>
-              </div>
-
-              {/* Campos adicionales cuando hay falla */}
-              {estado === "no_cumple" && (
-                <div className="mt-3 pt-3 border-t border-red-100 space-y-3">
-                  {/* Descripción de falla */}
-                  <textarea
-                    placeholder="Describe la falla encontrada..."
-                    value={respuesta?.descripcionFalla || ""}
-                    onChange={(e) =>
-                      setRespuestas((prev) => ({
-                        ...prev,
-                        [item.id]: {
-                          ...prev[item.id],
-                          descripcionFalla: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full p-3 text-sm border border-red-200 rounded-xl bg-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500"
-                    rows={2}
-                  />
-
-                  {/* Fotos de evidencia */}
-                  {fotos.length > 0 && (
-                    <div className="flex gap-2 flex-wrap">
-                      {fotos.map((foto) => (
-                        <div
-                          key={foto.id}
-                          className="relative w-20 h-20 rounded-lg overflow-hidden group"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={foto.url}
-                            alt="Evidencia"
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            onClick={() => handlePhotoDelete(item.id, foto.id)}
-                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Botones para agregar foto */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openPhotoSelector(item.id, true)}
-                      disabled={isUploading}
-                      className="flex-1 py-2 px-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-200 transition-colors disabled:opacity-50"
-                    >
-                      {isUploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Camera className="h-4 w-4" />
-                      )}
-                      {isUploading ? "Subiendo..." : "Cámara"}
-                    </button>
-                    <button
-                      onClick={() => openPhotoSelector(item.id, false)}
-                      disabled={isUploading}
-                      className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors disabled:opacity-50"
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                      Galería
-                    </button>
-                  </div>
-
-                  {fotos.length > 0 && (
-                    <p className="text-xs text-gray-500">
-                      {fotos.length} foto(s) de evidencia
-                    </p>
-                  )}
+              <div className="text-right">
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  <span className="text-lg font-bold text-neutral-900">
+                    {camion.ultimaInspeccion.nota}
+                  </span>
+                  <span className="text-xs text-neutral-400">/100</span>
                 </div>
-              )}
+                <span
+                  className={cn(
+                    "text-xs font-medium px-2 py-0.5 rounded-full",
+                    getResultadoColor(camion.ultimaInspeccion.resultado)
+                  )}
+                >
+                  {camion.ultimaInspeccion.resultado}
+                </span>
+              </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Fixed Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-        <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-            <span>Progreso total</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-teal-500 rounded-full transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {currentCategoryIndex === CATEGORIAS.length - 1 ? (
-            <>
-              <button
-                onClick={handlePrev}
-                className="py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                EDITAR
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="py-3 px-6 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Spinner className="h-4 w-4" />
-                    ENVIANDO...
-                  </>
-                ) : (
-                  "ENVIAR"
-                )}
-              </button>
-            </>
           ) : (
-            <>
-              <button
-                onClick={handlePrev}
-                disabled={currentCategoryIndex === 0}
-                className="py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                ANTERIOR
-              </button>
-              <button
-                onClick={handleNext}
-                className="py-3 px-6 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 transition-colors"
-              >
-                SIGUIENTE
-              </button>
-            </>
+            <div className="p-4 bg-neutral-50 rounded-xl text-center">
+              <AlertCircle className="h-8 w-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-sm text-neutral-500">
+                Sin inspecciones previas registradas
+              </p>
+            </div>
           )}
         </div>
+
+        {/* Tipo de Remolque */}
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+            <Container className="h-5 w-5 text-red-600" />
+            Tipo de Remolque
+          </h3>
+
+          <div className="grid grid-cols-2 gap-3">
+            {TIPOS_REMOLQUE.map((tipo) => {
+              const Icon = tipo.icon;
+              const isSelected = tipoRemolqueSeleccionado === tipo.id;
+
+              return (
+                <button
+                  key={tipo.id}
+                  onClick={() => setTipoRemolqueSeleccionado(tipo.id)}
+                  className={cn(
+                    "p-4 rounded-xl border-2 transition-all text-left",
+                    isSelected
+                      ? "border-red-500 bg-red-50"
+                      : "border-neutral-200 hover:border-neutral-300"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center mb-2",
+                      isSelected ? "bg-red-100" : "bg-neutral-100"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-5 w-5",
+                        isSelected ? "text-red-600" : "text-neutral-600"
+                      )}
+                    />
+                  </div>
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      isSelected ? "text-red-700" : "text-neutral-700"
+                    )}
+                  >
+                    {tipo.nombre}
+                  </p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    +{tipo.categorias.length} categorías
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Categorías a Inspeccionar */}
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-neutral-900 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-red-600" />
+              Categorías a Inspeccionar
+            </h3>
+            <span className="text-sm text-neutral-500">
+              ~{totalItems} items
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {/* Categorías base */}
+            {CATEGORIAS_BASE.map((cat) => (
+              <div
+                key={cat.id}
+                className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-neutral-700">{cat.nombre}</span>
+                </div>
+                <span className="text-xs text-neutral-400">{cat.items} items</span>
+              </div>
+            ))}
+
+            {/* Categorías del tipo de remolque seleccionado */}
+            {tipoRemolqueInfo && (
+              <>
+                <div className="my-3 border-t border-neutral-200" />
+                <p className="text-xs font-medium text-red-600 uppercase tracking-wide mb-2">
+                  Específico de {tipoRemolqueInfo.nombre}
+                </p>
+                {tipoRemolqueInfo.categorias.map((cat, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <tipoRemolqueInfo.icon className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-700">{cat}</span>
+                    </div>
+                    <span className="text-xs text-red-400">3 items</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Instrucciones */}
+        <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Camera className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-neutral-900 mb-1">
+                Prepara tu cámara
+              </p>
+              <p className="text-xs text-neutral-500">
+                Durante la inspección podrás tomar fotos de evidencia para documentar
+                cualquier falla o anomalía encontrada.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Botón Fijo Inferior */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 p-4 z-40">
+        <button
+          onClick={handleStartInspection}
+          disabled={!tipoRemolqueSeleccionado}
+          className={cn(
+            "w-full py-4 px-6 font-bold rounded-xl transition-all flex items-center justify-center gap-2",
+            tipoRemolqueSeleccionado
+              ? "bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30"
+              : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+          )}
+        >
+          <Camera className="h-5 w-5" />
+          COMENZAR INSPECCIÓN
+        </button>
+
+        {!tipoRemolqueSeleccionado && (
+          <p className="text-xs text-center text-neutral-500 mt-2">
+            Selecciona un tipo de remolque para continuar
+          </p>
+        )}
       </div>
     </div>
   );

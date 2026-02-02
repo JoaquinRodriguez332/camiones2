@@ -134,17 +134,17 @@ export default function HistorialPage() {
       default:
         return {
           icon: AlertTriangle,
-          color: "text-gray-600",
-          bg: "bg-gray-50",
-          border: "border-gray-200",
+          color: "text-neutral-600",
+          bg: "bg-neutral-50",
+          border: "border-neutral-200",
         };
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner className="h-10 w-10 text-teal-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-red-600" />
       </div>
     );
   }
@@ -156,17 +156,17 @@ export default function HistorialPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-neutral-900 border-b border-neutral-800 sticky top-0 z-40">
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-xl font-bold text-gray-900">Historial</h1>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Download className="h-5 w-5 text-gray-600" />
+            <h1 className="text-xl font-bold text-white">Historial</h1>
+            <button className="p-2 hover:bg-neutral-800 rounded-lg transition-colors">
+              <Download className="h-5 w-5 text-neutral-400" />
             </button>
           </div>
-          <p className="text-sm text-gray-500">Inspecciones realizadas</p>
+          <p className="text-sm text-neutral-400">Inspecciones realizadas</p>
         </div>
       </header>
 
@@ -174,15 +174,15 @@ export default function HistorialPage() {
       <div className="px-4 py-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white rounded-xl p-4 border border-gray-100">
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            <p className="text-xs text-gray-500">Total</p>
+          <div className="bg-white rounded-xl p-4 border border-neutral-200">
+            <p className="text-2xl font-bold text-neutral-900">{stats.total}</p>
+            <p className="text-xs text-neutral-500">Total</p>
           </div>
-          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+          <div className="bg-green-50 rounded-xl p-4 border border-green-200">
             <p className="text-2xl font-bold text-green-600">{stats.aprobadas}</p>
             <p className="text-xs text-green-600">Aprobadas</p>
           </div>
-          <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+          <div className="bg-red-50 rounded-xl p-4 border border-red-200">
             <p className="text-2xl font-bold text-red-600">{stats.rechazadas}</p>
             <p className="text-xs text-red-600">Rechazadas</p>
           </div>
@@ -190,13 +190,13 @@ export default function HistorialPage() {
 
         {/* Search */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
           <input
             type="text"
             placeholder="Buscar por patente, marca o empresa..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-full pl-10 pr-4 py-3 bg-neutral-100 border border-neutral-200 rounded-xl text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
 
@@ -213,8 +213,8 @@ export default function HistorialPage() {
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
                 activeFilter === filter.key
-                  ? "bg-teal-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-600"
+                  ? "bg-red-600 text-white"
+                  : "bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400"
               )}
             >
               {filter.label}
@@ -225,12 +225,12 @@ export default function HistorialPage() {
         {/* List */}
         <div className="space-y-3">
           {filteredInspecciones.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center">
-              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-900 font-semibold mb-1">
+            <div className="bg-neutral-50 rounded-2xl p-8 text-center border border-neutral-200">
+              <Calendar className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-900 font-semibold mb-1">
                 Sin inspecciones
               </p>
-              <p className="text-gray-500 text-sm">
+              <p className="text-neutral-500 text-sm">
                 No hay inspecciones que coincidan con tu búsqueda
               </p>
             </div>
@@ -245,7 +245,7 @@ export default function HistorialPage() {
                   onClick={() =>
                     router.push(`/inspector/inspeccion/${insp.id}/reporte`)
                   }
-                  className="bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-md transition-all cursor-pointer"
+                  className="bg-white rounded-2xl p-4 border border-neutral-200 hover:border-red-300 hover:shadow-md transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
                     <div
@@ -259,7 +259,7 @@ export default function HistorialPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-gray-900">
+                        <h3 className="font-bold text-neutral-900">
                           {insp.patente}
                         </h3>
                         <span
@@ -272,10 +272,10 @@ export default function HistorialPage() {
                           {insp.nota}/100
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-sm text-neutral-600 truncate">
                         {insp.marca} {insp.modelo}
                       </p>
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <p className="text-xs text-neutral-400 flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(insp.fecha).toLocaleDateString("es-CL", {
                           day: "numeric",
@@ -285,7 +285,7 @@ export default function HistorialPage() {
                       </p>
                     </div>
 
-                    <ChevronRight className="h-5 w-5 text-gray-300" />
+                    <ChevronRight className="h-5 w-5 text-neutral-400" />
                   </div>
                 </div>
               );

@@ -9,10 +9,10 @@ import { requireInspector } from "@/lib/shared/security/staff-auth";
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const camion_id = params.id;
+    const { id: camion_id } = await params;
 
     // Verificar JWT y rol
     const session = requireInspector(req);
@@ -42,6 +42,7 @@ export async function POST(
     const pool = await getPool();
 
     // 1. Verificar que la inspección pertenece al inspector
+    // ✅ ERROR 3 CORREGIDO: Solo buscar PROGRAMADA
     const inspeccionCheck = await pool
       .request()
       .input("camion_id", camion_id)
@@ -50,7 +51,7 @@ export async function POST(
         SELECT id FROM inspecciones 
         WHERE camion_id = @camion_id 
         AND inspector_id = @inspector_id
-        AND estado IN ('PROGRAMADA', 'EN_PROGRESO')
+        AND estado = 'PROGRAMADA'
       `);
 
     if (inspeccionCheck.recordset.length === 0) {
@@ -63,12 +64,13 @@ export async function POST(
     const inspeccion_id = inspeccionCheck.recordset[0].id;
 
     // 2. Actualizar inspección principal
+    // ✅ ERROR 1 CORREGIDO: Usar REALIZADA en lugar de COMPLETADA
     await pool
       .request()
       .input("inspeccion_id", inspeccion_id)
       .input("notaFinal", notaFinal || 0)
       .input("observaciones", observacionesGenerales || null)
-      .input("estado", "COMPLETADA")
+      .input("estado", "REALIZADA")
       .input("fechaCompletacion", new Date())
       .query(`
         UPDATE inspecciones
@@ -76,17 +78,30 @@ export async function POST(
           nota_final = @notaFinal,
           resultado_detallado = @observaciones,
           estado = @estado,
-          fecha_completacion = @fechaCompletacion,
+          fecha_inspeccion = @fechaCompletacion,
           resultado_general = CASE 
-            WHEN @notaFinal >= 80 THEN 'APROBADA'
-            WHEN @notaFinal >= 60 THEN 'PARCIAL'
-            ELSE 'RECHAZADA'
+            WHEN @notaFinal >= 80 THEN 'aprobado'
+            WHEN @notaFinal >= 60 THEN 'observado'
+            ELSE 'rechazado'
           END
         WHERE id = @inspeccion_id
       `);
 
     // 3. Insertar detalle de cada ítem
+    // ✅ ERROR 2 CORREGIDO: Agregar campo categoria
     for (const respuesta of respuestas) {
+      
+      // Obtener la categoría del item
+      const itemInfo = await pool
+        .request()
+        .input("item_id", respuesta.itemId)
+        .query(`
+          SELECT categoria FROM items_inspeccion
+          WHERE id = @item_id
+        `);
+
+      const categoria = itemInfo.recordset[0]?.categoria || "General";
+
       const exists = await pool
         .request()
         .input("inspeccion_id", inspeccion_id)
@@ -105,12 +120,14 @@ export async function POST(
           .input("resultado", respuesta.estado)
           .input("descripcion", respuesta.descripcionFalla || null)
           .input("motivo", respuesta.motivoNoAplica || null)
+          .input("categoria", categoria)
           .query(`
             UPDATE detalle_inspeccion
             SET 
               resultado = @resultado,
               descripcion_falla = @descripcion,
-              motivo_no_aplica = @motivo
+              motivo_no_aplica = @motivo,
+              categoria = @categoria
             WHERE id = @detalle_id
           `);
       } else {
@@ -122,10 +139,11 @@ export async function POST(
           .input("resultado", respuesta.estado)
           .input("descripcion", respuesta.descripcionFalla || null)
           .input("motivo", respuesta.motivoNoAplica || null)
+          .input("categoria", categoria)
           .query(`
             INSERT INTO detalle_inspeccion 
-            (inspeccion_id, item_id, resultado, descripcion_falla, motivo_no_aplica)
-            VALUES (@inspeccion_id, @item_id, @resultado, @descripcion, @motivo)
+            (inspeccion_id, item_id, resultado, descripcion_falla, motivo_no_aplica, categoria)
+            VALUES (@inspeccion_id, @item_id, @resultado, @descripcion, @motivo, @categoria)
           `);
       }
     }
@@ -146,13 +164,14 @@ export async function POST(
       }
     }
 
+    // ✅ ERROR 4 CORREGIDO: Devolver REALIZADA en lugar de COMPLETADA
     return NextResponse.json({
       success: true,
       message: "Inspección completada",
       data: {
         inspeccion_id,
         nota_final: notaFinal,
-        estado: "COMPLETADA",
+        estado: "REALIZADA",
         respuestas_guardadas: respuestas.length,
         fotos_guardadas: fotos_evidencia?.length || 0,
       },

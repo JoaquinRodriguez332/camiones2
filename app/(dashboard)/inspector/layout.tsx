@@ -40,7 +40,7 @@ export default function InspectorLayout({ children }: InspectorLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-950 pb-20">
+    <div className="min-h-screen bg-white pb-20">
       {/* Main Content */}
       <main className="min-h-screen">
         {children}
@@ -57,7 +57,7 @@ export default function InspectorLayout({ children }: InspectorLayoutProps) {
                 "flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all",
                 item.active
                   ? "text-red-500"
-                  : "text-neutral-500 hover:text-neutral-300"
+                  : "text-neutral-400 hover:text-white"
               )}
             >
               <item.icon

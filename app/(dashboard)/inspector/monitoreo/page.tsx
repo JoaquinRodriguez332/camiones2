@@ -60,8 +60,8 @@ export default function MonitoreoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner className="h-10 w-10 text-teal-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-red-600" />
       </div>
     );
   }
@@ -69,12 +69,12 @@ export default function MonitoreoPage() {
   if (!stats) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-neutral-900 border-b border-neutral-800 sticky top-0 z-40">
         <div className="px-4 py-4">
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Monitoreo</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-white mb-1">Monitoreo</h1>
+          <p className="text-sm text-neutral-400">
             Resumen de tu actividad de inspecciones
           </p>
         </div>
@@ -83,27 +83,27 @@ export default function MonitoreoPage() {
       {/* Content */}
       <div className="px-4 py-6 space-y-6">
         {/* Today's Progress */}
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-2xl p-6 text-white">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Progreso de Hoy</h2>
-            <Calendar className="h-5 w-5 text-teal-200" />
+            <Calendar className="h-5 w-5 text-neutral-400" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 backdrop-blur rounded-xl p-4">
               <p className="text-3xl font-bold">{stats.hoy.completadas}</p>
-              <p className="text-sm text-teal-100">Completadas</p>
+              <p className="text-sm text-neutral-300">Completadas</p>
             </div>
             <div className="bg-white/10 backdrop-blur rounded-xl p-4">
               <p className="text-3xl font-bold">{stats.hoy.pendientes}</p>
-              <p className="text-sm text-teal-100">Pendientes</p>
+              <p className="text-sm text-neutral-300">Pendientes</p>
             </div>
           </div>
 
           {/* Progress Bar */}
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-teal-100">Progreso</span>
+              <span className="text-neutral-300">Progreso</span>
               <span className="font-semibold">
                 {Math.round(
                   (stats.hoy.completadas /
@@ -115,7 +115,7 @@ export default function MonitoreoPage() {
             </div>
             <div className="h-3 bg-white/20 rounded-full overflow-hidden">
               <div
-                className="h-full bg-white rounded-full transition-all"
+                className="h-full bg-red-500 rounded-full transition-all"
                 style={{
                   width: `${
                     (stats.hoy.completadas /
@@ -129,9 +129,9 @@ export default function MonitoreoPage() {
         </div>
 
         {/* Results Summary */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <PieChart className="h-5 w-5 text-teal-600" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <PieChart className="h-5 w-5 text-red-600" />
             Resultados de Hoy
           </h3>
 
@@ -163,18 +163,18 @@ export default function MonitoreoPage() {
         </div>
 
         {/* Weekly Stats */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-teal-600" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-red-600" />
             Resumen Semanal
           </h3>
 
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
             <div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-neutral-900">
                 {stats.semana.total}
               </p>
-              <p className="text-sm text-gray-500">Inspecciones esta semana</p>
+              <p className="text-sm text-neutral-500">Inspecciones esta semana</p>
             </div>
 
             <div
@@ -196,21 +196,21 @@ export default function MonitoreoPage() {
         </div>
 
         {/* Performance Metrics */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">Tu Rendimiento</h3>
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4">Tu Rendimiento</h3>
 
           <div className="space-y-4">
             {/* Average Score */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-neutral-900">
                     Nota Promedio
                   </p>
-                  <p className="text-xs text-gray-500">De tus inspecciones</p>
+                  <p className="text-xs text-neutral-500">De tus inspecciones</p>
                 </div>
               </div>
               <div className="text-right">
@@ -226,24 +226,24 @@ export default function MonitoreoPage() {
                 >
                   {stats.promedioNota}
                 </p>
-                <p className="text-xs text-gray-500">/100</p>
+                <p className="text-xs text-neutral-500">/100</p>
               </div>
             </div>
 
             {/* Average Time */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Clock className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-neutral-900">
                     Tiempo Promedio
                   </p>
-                  <p className="text-xs text-gray-500">Por inspección</p>
+                  <p className="text-xs text-neutral-500">Por inspección</p>
                 </div>
               </div>
-              <p className="text-lg font-bold text-gray-900">
+              <p className="text-lg font-bold text-neutral-900">
                 {stats.tiempoPromedio}
               </p>
             </div>
@@ -251,20 +251,20 @@ export default function MonitoreoPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4">Acciones Rápidas</h3>
 
           <div className="grid grid-cols-2 gap-3">
-            <button className="p-4 bg-teal-50 rounded-xl text-center hover:bg-teal-100 transition-colors">
-              <Truck className="h-6 w-6 text-teal-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-teal-700">
+            <button className="p-4 bg-red-50 rounded-xl text-center hover:bg-red-100 transition-colors">
+              <Truck className="h-6 w-6 text-red-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-red-700">
                 Nueva Inspección
               </p>
             </button>
 
-            <button className="p-4 bg-blue-50 rounded-xl text-center hover:bg-blue-100 transition-colors">
-              <BarChart3 className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-700">Ver Reportes</p>
+            <button className="p-4 bg-neutral-100 rounded-xl text-center hover:bg-neutral-200 transition-colors">
+              <BarChart3 className="h-6 w-6 text-neutral-700 mx-auto mb-2" />
+              <p className="text-sm font-medium text-neutral-700">Ver Reportes</p>
             </button>
           </div>
         </div>

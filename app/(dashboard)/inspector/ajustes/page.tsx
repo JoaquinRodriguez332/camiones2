@@ -73,8 +73,8 @@ export default function AjustesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner className="h-10 w-10 text-teal-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-red-600" />
       </div>
     );
   }
@@ -150,33 +150,33 @@ export default function AjustesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-neutral-900 border-b border-neutral-800 sticky top-0 z-40">
         <div className="px-4 py-4">
-          <h1 className="text-xl font-bold text-gray-900">Ajustes</h1>
+          <h1 className="text-xl font-bold text-white">Ajustes</h1>
         </div>
       </header>
 
       {/* Content */}
       <div className="px-4 py-6 space-y-6">
         {/* Profile Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0">
               <span className="text-2xl font-bold text-white">
                 {inspector?.nombre?.charAt(0) || "I"}
               </span>
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 truncate">
+              <h2 className="font-bold text-neutral-900 truncate">
                 {inspector?.nombre || "Inspector"}
               </h2>
-              <p className="text-sm text-gray-500 truncate">
+              <p className="text-sm text-neutral-500 truncate">
                 {inspector?.email || "inspector@petran.cl"}
               </p>
-              <p className="text-xs text-teal-600 font-medium">
+              <p className="text-xs text-red-600 font-medium">
                 ID: {inspector?.id || "-"}
               </p>
             </div>
@@ -186,11 +186,11 @@ export default function AjustesPage() {
         {/* Menu Sections */}
         {menuSections.map((section, sectionIdx) => (
           <div key={sectionIdx}>
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3 px-1">
               {section.title}
             </h3>
 
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
               {section.items.map((item, itemIdx) => (
                 <div
                   key={itemIdx}
@@ -202,18 +202,18 @@ export default function AjustesPage() {
                     }
                   }}
                   className={cn(
-                    "flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors",
+                    "flex items-center justify-between p-4 cursor-pointer hover:bg-neutral-50 transition-colors",
                     itemIdx !== section.items.length - 1 &&
-                      "border-b border-gray-100"
+                      "border-b border-neutral-100"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                      <item.icon className="h-5 w-5 text-gray-600" />
+                    <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
+                      <item.icon className="h-5 w-5 text-neutral-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{item.label}</p>
-                      <p className="text-xs text-gray-500">{item.description}</p>
+                      <p className="font-medium text-neutral-900">{item.label}</p>
+                      <p className="text-xs text-neutral-500">{item.description}</p>
                     </div>
                   </div>
 
@@ -221,7 +221,7 @@ export default function AjustesPage() {
                     <button
                       className={cn(
                         "w-12 h-7 rounded-full transition-colors relative",
-                        item.value ? "bg-teal-500" : "bg-gray-200"
+                        item.value ? "bg-red-500" : "bg-neutral-200"
                       )}
                     >
                       <span
@@ -232,7 +232,7 @@ export default function AjustesPage() {
                       />
                     </button>
                   ) : (
-                    <ChevronRight className="h-5 w-5 text-gray-300" />
+                    <ChevronRight className="h-5 w-5 text-neutral-400" />
                   )}
                 </div>
               ))}
@@ -243,14 +243,14 @@ export default function AjustesPage() {
         {/* Logout Button */}
         <button
           onClick={handleLogout}
-          className="w-full bg-white rounded-2xl border border-red-100 p-4 flex items-center justify-center gap-3 text-red-600 font-semibold hover:bg-red-50 transition-colors"
+          className="w-full bg-white rounded-2xl border border-red-200 p-4 flex items-center justify-center gap-3 text-red-600 font-semibold hover:bg-red-50 transition-colors"
         >
           <LogOut className="h-5 w-5" />
           Cerrar Sesión
         </button>
 
         {/* Version */}
-        <p className="text-center text-xs text-gray-400 py-4">
+        <p className="text-center text-xs text-neutral-400 py-4">
           PETRAN Inspector v1.0.0
         </p>
       </div>

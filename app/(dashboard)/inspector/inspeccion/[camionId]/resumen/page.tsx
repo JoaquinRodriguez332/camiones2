@@ -119,45 +119,45 @@ export default function ResumenInspeccionPage() {
   }, [camionId]);
 
   const handleStartInspection = () => {
-    router.push(`/inspector/inspeccion/${camionId}/fotos`);
+    router.push(`/inspector/inspeccion/${camionId}`);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Spinner className="h-10 w-10 text-teal-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-red-600" />
       </div>
     );
   }
 
   if (!vehiculo) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">Vehículo no encontrado</p>
+          <AlertCircle className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+          <p className="text-neutral-600">Vehículo no encontrado</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen bg-white pb-32">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-neutral-900 border-b border-neutral-800 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={() => router.back()}
-              className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 -ml-2 hover:bg-neutral-800 rounded-lg transition-colors"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-600" />
+              <ChevronLeft className="h-5 w-5 text-white" />
             </button>
 
-            <h1 className="font-semibold text-gray-900">Inicio Inspección</h1>
+            <h1 className="font-semibold text-white">Inicio Inspección</h1>
 
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-              <span className="text-sm font-bold text-gray-600">
+            <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center">
+              <span className="text-sm font-bold text-white">
                 {inspector?.nombre?.charAt(0) || "I"}
               </span>
             </div>
@@ -168,87 +168,87 @@ export default function ResumenInspeccionPage() {
       {/* Content */}
       <div className="px-4 py-6 space-y-6">
         {/* Vehicle Hero Card */}
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-2xl p-6 text-white">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center flex-shrink-0">
-              <Truck className="h-8 w-8 text-white" />
+            <div className="w-16 h-16 bg-red-600/20 backdrop-blur rounded-2xl flex items-center justify-center flex-shrink-0">
+              <Truck className="h-8 w-8 text-red-500" />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-teal-100 text-xs font-medium">
+                <span className="text-neutral-400 text-xs font-medium">
                   {vehiculo.patente}
                 </span>
-                <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">
+                <span className="bg-red-600/20 text-red-400 text-xs px-2 py-0.5 rounded-full">
                   {vehiculo.tipo}
                 </span>
               </div>
               <h2 className="text-xl font-bold mb-1 truncate">
                 {vehiculo.marca} {vehiculo.modelo}
               </h2>
-              <p className="text-teal-100 text-sm">Año {vehiculo.anio}</p>
+              <p className="text-neutral-400 text-sm">Año {vehiculo.anio}</p>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-white/20">
+          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-white/10">
             <div className="text-center">
               <p className="text-2xl font-bold">
                 {vehiculo.historial?.totalInspecciones || 0}
               </p>
-              <p className="text-xs text-teal-100">Inspecciones</p>
+              <p className="text-xs text-neutral-400">Inspecciones</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold">
                 {vehiculo.historial?.notaPromedio || 0}
               </p>
-              <p className="text-xs text-teal-100">Nota Prom.</p>
+              <p className="text-xs text-neutral-400">Nota Prom.</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold">
                 {vehiculo.ultimaInspeccion?.nota || "-"}
               </p>
-              <p className="text-xs text-teal-100">Última Nota</p>
+              <p className="text-xs text-neutral-400">Última Nota</p>
             </div>
           </div>
         </div>
 
         {/* Vehicle Information */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="h-5 w-5 text-teal-600" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5 text-red-600" />
             Información del Vehículo
           </h3>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
               <div className="flex items-center gap-3">
-                <Building2 className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Empresa</span>
+                <Building2 className="h-5 w-5 text-neutral-400" />
+                <span className="text-sm text-neutral-600">Empresa</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-neutral-900">
                 {vehiculo.empresa}
               </span>
             </div>
 
             {vehiculo.proveedor && (
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Wrench className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Proveedor</span>
+                  <Wrench className="h-5 w-5 text-neutral-400" />
+                  <span className="text-sm text-neutral-600">Proveedor</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-neutral-900">
                   {vehiculo.proveedor}
                 </span>
               </div>
             )}
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
               <div className="flex items-center gap-3">
-                <Gauge className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Tipo</span>
+                <Gauge className="h-5 w-5 text-neutral-400" />
+                <span className="text-sm text-neutral-600">Tipo</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-neutral-900">
                 {vehiculo.tipo}
               </span>
             </div>
@@ -256,9 +256,9 @@ export default function ResumenInspeccionPage() {
         </div>
 
         {/* Inspection History */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-teal-600" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <Clock className="h-5 w-5 text-red-600" />
             Historial Reciente
           </h3>
 
@@ -294,8 +294,8 @@ export default function ResumenInspeccionPage() {
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-gray-50 rounded-xl text-center">
-              <p className="text-gray-500 text-sm">
+            <div className="p-4 bg-neutral-50 rounded-xl text-center">
+              <p className="text-neutral-500 text-sm">
                 Sin inspecciones previas registradas
               </p>
             </div>
@@ -303,11 +303,11 @@ export default function ResumenInspeccionPage() {
 
           {/* Summary Stats */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="p-3 bg-teal-50 rounded-xl">
-              <p className="text-2xl font-bold text-teal-700">
+            <div className="p-3 bg-red-50 rounded-xl">
+              <p className="text-2xl font-bold text-red-700">
                 {vehiculo.historial?.completadas || 0}
               </p>
-              <p className="text-xs text-teal-600">Completadas</p>
+              <p className="text-xs text-red-600">Completadas</p>
             </div>
             <div className="p-3 bg-yellow-50 rounded-xl">
               <p className="text-2xl font-bold text-yellow-700">
@@ -356,35 +356,35 @@ export default function ResumenInspeccionPage() {
         )}
 
         {/* Inspector Info */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <User className="h-5 w-5 text-teal-600" />
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <User className="h-5 w-5 text-red-600" />
             Inspector Asignado
           </h3>
 
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-              <span className="text-lg font-bold text-teal-600">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-lg font-bold text-red-600">
                 {inspector?.nombre?.charAt(0) || "I"}
               </span>
             </div>
             <div>
-              <p className="font-semibold text-gray-900">
+              <p className="font-semibold text-neutral-900">
                 {inspector?.nombre || "Inspector"}
               </p>
-              <p className="text-sm text-gray-500">ID: {inspector?.id || "-"}</p>
+              <p className="text-sm text-neutral-500">ID: {inspector?.id || "-"}</p>
             </div>
           </div>
         </div>
 
         {/* Inspection Checklist Preview */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-teal-600" />
+            <h3 className="font-semibold text-neutral-900 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-red-600" />
               Categorías a Inspeccionar
             </h3>
-            <span className="text-sm text-gray-500">13 categorías</span>
+            <span className="text-sm text-neutral-500">13 categorías</span>
           </div>
 
           <div className="space-y-2">
@@ -396,7 +396,7 @@ export default function ResumenInspeccionPage() {
             ].map((cat, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
+                className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl"
               >
                 <div className="flex items-center gap-3">
                   <span
@@ -404,28 +404,28 @@ export default function ResumenInspeccionPage() {
                       "text-xs font-bold px-2 py-1 rounded",
                       cat.nivel === "N1"
                         ? "bg-red-100 text-red-700"
-                        : "bg-gray-100 text-gray-700"
+                        : "bg-neutral-100 text-neutral-700"
                     )}
                   >
                     {cat.nivel}
                   </span>
-                  <span className="text-sm text-gray-900">{cat.name}</span>
+                  <span className="text-sm text-neutral-900">{cat.name}</span>
                 </div>
-                <span className="text-xs text-gray-500">{cat.items} items</span>
+                <span className="text-xs text-neutral-500">{cat.items} items</span>
               </div>
             ))}
             <div className="text-center py-2">
-              <span className="text-xs text-gray-400">+ 9 categorías más</span>
+              <span className="text-xs text-neutral-400">+ 9 categorías más</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Fixed Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 p-4 z-40">
         <button
           onClick={handleStartInspection}
-          className="w-full py-4 px-6 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
         >
           <Camera className="h-5 w-5" />
           COMENZAR INSPECCIÓN
