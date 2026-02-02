@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           rol,
           activo
         FROM usuarios
-        WHERE id = @usuario_id AND role = 'inspector' AND activo = 1
+        WHERE id = @usuario_id AND rol = 'inspector' AND activo = 1
       `);
 
     if (result.recordset.length === 0) {
